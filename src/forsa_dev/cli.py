@@ -13,7 +13,8 @@ import typer
 from forsa_dev import git, tmux
 from forsa_dev.compose import generate_compose
 from forsa_dev.config import DEFAULT_CONFIG_PATH, Config, load_config, save_config
-from forsa_dev.list_status import check_status, port_is_open
+from forsa_dev.list_status import check_status, format_uptime, port_is_open
+from forsa_dev.operations import _compose_cmd, restart_env, serve_env, stop_env
 from forsa_dev.ports import allocate_port
 from forsa_dev.state import Environment, delete_state, list_states, load_state, save_state
 
@@ -143,15 +144,6 @@ def up(
         tmux.attach_session(full_name)
 
 
-def _compose_cmd(env: Environment, *args: str) -> list[str]:
-    return [
-        "docker", "compose",
-        "-p", _full_name(env.user, env.name),
-        "-f", str(env.compose_file),
-        *args,
-    ]
-
-
 @app.command()
 def serve(
     name: str,
@@ -161,22 +153,14 @@ def serve(
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
-
     typer.echo(f"Starting server on port {env.port}...")
-    result = subprocess.run(_compose_cmd(env, "up", "-d"), check=False)
-    if result.returncode != 0:
+    try:
+        serve_env(cfg, user, name)
+    except RuntimeError:
         typer.echo("Error: docker compose up failed.", err=True)
         raise typer.Exit(1)
-
-    url = f"http://{cfg.base_url}:{env.port}"
-
-    updated = Environment(
-        **{**env.__dict__,
-           "url": url,
-           "served_at": datetime.now(tz=timezone.utc)}
-    )
-    save_state(updated, cfg.state_dir)
-    typer.echo(f"Serving at {url}")
+    updated = load_state(user, name, cfg.state_dir)
+    typer.echo(f"Serving at {updated.url}")
 
 
 @app.command()
@@ -187,15 +171,8 @@ def stop(
     """Stop the Docker server. Tmux session is preserved."""
     cfg = _load(config)
     user = getpass.getuser()
-    env = load_state(user, name, cfg.state_dir)
-
     typer.echo("Stopping server...")
-    subprocess.run(_compose_cmd(env, "down"), check=False)
-
-    updated = Environment(
-        **{**env.__dict__, "url": None, "served_at": None}
-    )
-    save_state(updated, cfg.state_dir)
+    stop_env(cfg, user, name)
     typer.echo("Server stopped. Tmux session preserved.")
 
 
@@ -207,9 +184,8 @@ def restart(
     """Restart the Docker containers."""
     cfg = _load(config)
     user = getpass.getuser()
-    env = load_state(user, name, cfg.state_dir)
     typer.echo("Restarting...")
-    subprocess.run(_compose_cmd(env, "restart"), check=False)
+    restart_env(cfg, user, name)
     typer.echo("Done.")
 
 
@@ -286,18 +262,6 @@ def attach(
     tmux.attach_session(env.tmux_session)
 
 
-def _format_uptime(served_at: datetime | None) -> str:
-    if served_at is None:
-        return "-"
-    delta = datetime.now(tz=timezone.utc) - served_at
-    seconds = int(delta.total_seconds())
-    if seconds < 3600:
-        return f"{seconds // 60}m"
-    if seconds < 86400:
-        return f"{seconds // 3600}h {(seconds % 3600) // 60}m"
-    return f"{seconds // 86400}d {(seconds % 86400) // 3600}h"
-
-
 @app.command(name="list")
 def list_envs(
     config: ConfigOption = None,
@@ -338,7 +302,7 @@ def list_envs(
             status.server,
             str(env.port),
             env.url or "-",
-            _format_uptime(env.served_at),
+            format_uptime(env.served_at),
         )
 
     console.print(table)

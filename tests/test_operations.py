@@ -1,0 +1,84 @@
+import getpass
+from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from forsa_dev.config import Config
+from forsa_dev.operations import restart_env, serve_env, stop_env
+from forsa_dev.state import Environment, load_state, save_state
+
+USER = getpass.getuser()
+
+
+@pytest.fixture()
+def cfg_and_env(tmp_path):
+    state_dir = tmp_path / "state"
+    worktree = tmp_path / "worktrees" / "ticket-42"
+    worktree.mkdir(parents=True)
+    compose_file = worktree / "docker-compose.dev.yml"
+    compose_file.write_text("services: {}")
+    env = Environment(
+        name="ticket-42",
+        user=USER,
+        branch="ticket-42",
+        worktree=worktree,
+        tmux_session=f"{USER}-ticket-42",
+        compose_file=compose_file,
+        port=3002,
+        url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None,
+    )
+    save_state(env, state_dir)
+    cfg = Config(
+        repo=tmp_path / "repo",
+        worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"),
+        state_dir=state_dir,
+        base_url="optbox.example.ts.net",
+        docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000,
+        port_range_end=3099,
+    )
+    return cfg, env
+
+
+def test_serve_env_updates_state(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        serve_env(cfg, USER, "ticket-42")
+    updated = load_state(USER, "ticket-42", cfg.state_dir)
+    assert updated.url == "http://optbox.example.ts.net:3002"
+    assert updated.served_at is not None
+
+
+def test_serve_env_raises_on_compose_failure(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=1)
+        with pytest.raises(RuntimeError):
+            serve_env(cfg, USER, "ticket-42")
+
+
+def test_stop_env_clears_state(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        stop_env(cfg, USER, "ticket-42")
+    updated = load_state(USER, "ticket-42", cfg.state_dir)
+    assert updated.url is None
+    assert updated.served_at is None
+
+
+def test_restart_env_calls_compose_restart(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        restart_env(cfg, USER, "ticket-42")
+    mock_run.assert_called_once()
+    cmd = mock_run.call_args[0][0]
+    assert "restart" in cmd
