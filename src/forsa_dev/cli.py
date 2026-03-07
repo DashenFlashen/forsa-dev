@@ -10,7 +10,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from forsa_dev import caddy, git, tmux
+from forsa_dev import git, tmux
 from forsa_dev.compose import generate_compose
 from forsa_dev.config import DEFAULT_CONFIG_PATH, Config, load_config, save_config
 from forsa_dev.list_status import check_status, port_is_open
@@ -48,7 +48,6 @@ def init(
     )
     data_dir = typer.prompt("Default data directory", default="/data/dev")
     state_dir = typer.prompt("Shared state directory", default="/var/lib/forsa-dev")
-    caddy_admin = typer.prompt("Caddy admin API URL", default="http://localhost:2019")
     base_url = typer.prompt("Base URL (e.g. optbox.tailnet.ts.net)")
     docker_image = typer.prompt("Docker image name", default="alvbyran/forsa:latest")
     gurobi_lic = typer.prompt(
@@ -62,7 +61,6 @@ def init(
         worktree_dir=Path(worktree_dir),
         data_dir=Path(data_dir),
         state_dir=Path(state_dir),
-        caddy_admin=caddy_admin,
         base_url=base_url,
         docker_image=docker_image,
         gurobi_lic=Path(gurobi_lic),
@@ -168,8 +166,7 @@ def serve(
         typer.echo("Error: docker compose up failed.", err=True)
         raise typer.Exit(1)
 
-    url = f"https://{cfg.base_url}/{name}/"
-    caddy.register_route(cfg.caddy_admin, name, env.port)
+    url = f"http://{cfg.base_url}:{env.port}"
 
     updated = Environment(
         **{**env.__dict__,
@@ -192,7 +189,6 @@ def stop(
 
     typer.echo("Stopping server...")
     subprocess.run(_compose_cmd(env, "down"), check=False)
-    caddy.deregister_route(cfg.caddy_admin, name)
 
     updated = Environment(
         **{**env.__dict__, "url": None, "served_at": None}
@@ -238,7 +234,6 @@ def down(
     # Always run docker compose down even if never served — it's idempotent and
     # clears any containers that may have been started outside of forsa-dev.
     subprocess.run(_compose_cmd(env, "down"), check=False)
-    caddy.deregister_route(cfg.caddy_admin, name)
 
     # Kill tmux
     typer.echo("Killing tmux session...")

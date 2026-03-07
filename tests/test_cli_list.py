@@ -30,8 +30,7 @@ def test_list_empty(tmp_path):
     state_dir = tmp_path / "state"
     cfg_file.write_text(
         f'repo = "/tmp/repo"\nworktree_dir = "/tmp/worktrees"\ndata_dir = "/data/dev"\n'
-        f'state_dir = "{state_dir}"\ncaddy_admin = "http://localhost:2019"\n'
-        'base_url = "optbox.example.ts.net"\ndocker_image = "forsa:latest"\n'
+        f'state_dir = "{state_dir}"\nbase_url = "optbox.example.ts.net"\ndocker_image = "forsa:latest"\n'
         'gurobi_lic = "/opt/gurobi/gurobi.lic"\nport_range_start = 3000\nport_range_end = 3099\n'
     )
     result = runner.invoke(app, ["list", "--config", str(cfg_file)])
@@ -49,8 +48,7 @@ def test_list_shows_environments(tmp_path):
     cfg_file = tmp_path / "config.toml"
     cfg_file.write_text(
         f'repo = "/tmp/repo"\nworktree_dir = "/tmp/worktrees"\ndata_dir = "/data/dev"\n'
-        f'state_dir = "{state_dir}"\ncaddy_admin = "http://localhost:2019"\n'
-        'base_url = "optbox.example.ts.net"\ndocker_image = "forsa:latest"\n'
+        f'state_dir = "{state_dir}"\nbase_url = "optbox.example.ts.net"\ndocker_image = "forsa:latest"\n'
         'gurobi_lic = "/opt/gurobi/gurobi.lic"\nport_range_start = 3000\nport_range_end = 3099\n'
     )
     result = runner.invoke(app, ["list", "--config", str(cfg_file)])

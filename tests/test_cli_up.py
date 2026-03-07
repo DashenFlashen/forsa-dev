@@ -20,7 +20,6 @@ def config_file(tmp_path, git_repo):
         f'worktree_dir = "{worktree_dir}"\n'
         f'data_dir = "/data/dev"\n'
         f'state_dir = "{state_dir}"\n'
-        'caddy_admin = "http://localhost:2019"\n'
         'base_url = "optbox.example.ts.net"\n'
         'docker_image = "forsa:latest"\n'
         'gurobi_lic = "/opt/gurobi/gurobi.lic"\n'

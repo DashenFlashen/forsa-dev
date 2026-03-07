@@ -17,7 +17,6 @@ def test_init_writes_config(tmp_path):
         str(worktree_dir),
         "/data/dev",
         "/var/lib/forsa-dev",
-        "http://localhost:2019",
         "optbox.example.ts.net",
         "alvbyran/forsa:latest",
         "/opt/gurobi/gurobi.lic",
@@ -33,7 +32,6 @@ def test_init_writes_config(tmp_path):
     assert cfg.worktree_dir == worktree_dir
     assert cfg.data_dir == Path("/data/dev")
     assert cfg.state_dir == Path("/var/lib/forsa-dev")
-    assert cfg.caddy_admin == "http://localhost:2019"
     assert cfg.base_url == "optbox.example.ts.net"
     assert cfg.docker_image == "alvbyran/forsa:latest"
     assert cfg.gurobi_lic == Path("/opt/gurobi/gurobi.lic")

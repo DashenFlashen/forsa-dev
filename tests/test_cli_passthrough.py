@@ -30,7 +30,7 @@ def env_setup(tmp_path):
     cfg.write_text(
         f'repo = "/tmp/repo"\nworktree_dir = "{tmp_path / "worktrees"}"\n'
         f'data_dir = "/data/dev"\nstate_dir = "{state_dir}"\n'
-        'caddy_admin = "http://localhost:2019"\nbase_url = "optbox.example.ts.net"\n'
+        'base_url = "optbox.example.ts.net"\n'
         'docker_image = "forsa:latest"\ngurobi_lic = "/opt/gurobi/gurobi.lic"\n'
         "port_range_start = 3000\nport_range_end = 3099\n"
     )

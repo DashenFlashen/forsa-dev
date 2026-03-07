@@ -44,7 +44,6 @@ def config_file(tmp_path, env_with_state):
         f'worktree_dir = "{tmp_path / "worktrees"}"\n'
         'data_dir = "/data/dev"\n'
         f'state_dir = "{state_dir}"\n'
-        'caddy_admin = "http://localhost:2019"\n'
         'base_url = "optbox.example.ts.net"\n'
         'docker_image = "forsa:latest"\n'
         'gurobi_lic = "/opt/gurobi/gurobi.lic"\n'
@@ -61,7 +60,7 @@ def test_serve_updates_state(config_file, env_with_state):
         result = runner.invoke(app, ["serve", "ticket-42", "--config", str(config_file)])
     assert result.exit_code == 0, result.output
     updated = load_state(USER, "ticket-42", state_dir)
-    assert updated.url == "https://optbox.example.ts.net/ticket-42/"
+    assert updated.url == "http://optbox.example.ts.net:3002"
     assert updated.served_at is not None
 
 

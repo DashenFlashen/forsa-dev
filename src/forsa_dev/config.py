@@ -16,7 +16,6 @@ class Config:
     worktree_dir: Path
     data_dir: Path
     state_dir: Path
-    caddy_admin: str
     base_url: str
     docker_image: str
     gurobi_lic: Path
@@ -36,7 +35,6 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
         worktree_dir=Path(data["worktree_dir"]),
         data_dir=Path(data["data_dir"]),
         state_dir=Path(data["state_dir"]),
-        caddy_admin=data["caddy_admin"],
         base_url=data["base_url"],
         docker_image=data["docker_image"],
         gurobi_lic=Path(data["gurobi_lic"]),
@@ -52,7 +50,6 @@ def save_config(config: Config, path: Path = DEFAULT_CONFIG_PATH) -> None:
         "worktree_dir": str(config.worktree_dir),
         "data_dir": str(config.data_dir),
         "state_dir": str(config.state_dir),
-        "caddy_admin": config.caddy_admin,
         "base_url": config.base_url,
         "docker_image": config.docker_image,
         "gurobi_lic": str(config.gurobi_lic),
