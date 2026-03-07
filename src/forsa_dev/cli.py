@@ -269,6 +269,7 @@ def dashboard(
 ):
     """Start the web dashboard."""
     import uvicorn
+
     from forsa_dev.dashboard.server import create_app
 
     cfg = _load(config)
