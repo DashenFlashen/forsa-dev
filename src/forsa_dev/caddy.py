@@ -14,7 +14,7 @@ def _route_id(name: str) -> str:
 def _ensure_server(admin_url: str) -> None:
     """Create a minimal Caddy HTTP server if one doesn't exist yet."""
     resp = requests.get(f"{admin_url}/config/apps/http/servers/srv0", timeout=5)
-    if resp.status_code == 404:
+    if resp.text.strip() in ("", "null"):
         server = {"listen": [":80"], "routes": []}
         resp = requests.put(
             f"{admin_url}/config/apps/http/servers/srv0",
