@@ -49,7 +49,7 @@ def init(
     state_dir = typer.prompt("Shared state directory", default="/var/lib/forsa-dev")
     caddy_admin = typer.prompt("Caddy admin API URL", default="http://localhost:2019")
     base_url = typer.prompt("Base URL (e.g. optbox.tailnet.ts.net)")
-    docker_image = typer.prompt("Docker image name", default="forsa:latest")
+    docker_image = typer.prompt("Docker image name", default="alvbyran/forsa:latest")
     gurobi_lic = typer.prompt(
         "Path to gurobi.lic on this machine", default="/opt/gurobi/gurobi.lic"
     )
