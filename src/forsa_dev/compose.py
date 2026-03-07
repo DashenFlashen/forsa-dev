@@ -63,4 +63,5 @@ def generate_compose(
     )
     compose_file = worktree / "docker-compose.dev.yml"
     compose_file.write_text(content)
+    (worktree / "logs").mkdir(exist_ok=True)
     return compose_file
