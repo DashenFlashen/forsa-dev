@@ -21,6 +21,7 @@ class Config:
     gurobi_lic: Path
     port_range_start: int
     port_range_end: int
+    dashboard_port: int = 8080
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
@@ -40,6 +41,7 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
         gurobi_lic=Path(data["gurobi_lic"]),
         port_range_start=int(data["port_range_start"]),
         port_range_end=int(data["port_range_end"]),
+        dashboard_port=int(data.get("dashboard_port", 8080)),
     )
 
 
@@ -55,6 +57,7 @@ def save_config(config: Config, path: Path = DEFAULT_CONFIG_PATH) -> None:
         "gurobi_lic": str(config.gurobi_lic),
         "port_range_start": config.port_range_start,
         "port_range_end": config.port_range_end,
+        "dashboard_port": config.dashboard_port,
     }
     with path.open("wb") as f:
         tomli_w.dump(data, f)

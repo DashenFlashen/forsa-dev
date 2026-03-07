@@ -45,3 +45,21 @@ def test_save_config_roundtrip(tmp_path):
     save_config(config, config_file)
     loaded = load_config(config_file)
     assert loaded == config
+    assert loaded.dashboard_port == 8080
+
+
+def test_load_config_without_dashboard_port_defaults_to_8080(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config_file.write_text(
+        'repo = "/home/anders/forsa"\n'
+        'worktree_dir = "/home/anders/worktrees"\n'
+        'data_dir = "/data/dev"\n'
+        'state_dir = "/var/lib/forsa-dev"\n'
+        'base_url = "optbox.example.ts.net"\n'
+        'docker_image = "forsa:latest"\n'
+        'gurobi_lic = "/opt/gurobi/gurobi.lic"\n'
+        "port_range_start = 3000\n"
+        "port_range_end = 3099\n"
+    )
+    config = load_config(config_file)
+    assert config.dashboard_port == 8080

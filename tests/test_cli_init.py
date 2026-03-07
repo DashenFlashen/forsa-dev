@@ -22,6 +22,7 @@ def test_init_writes_config(tmp_path):
         "/opt/gurobi/gurobi.lic",
         "3000",
         "3099",
+        "8080",
     ]) + "\n"
 
     result = runner.invoke(app, ["init", "--config", str(config_path)], input=inputs)
@@ -37,3 +38,4 @@ def test_init_writes_config(tmp_path):
     assert cfg.gurobi_lic == Path("/opt/gurobi/gurobi.lic")
     assert cfg.port_range_start == 3000
     assert cfg.port_range_end == 3099
+    assert cfg.dashboard_port == 8080
