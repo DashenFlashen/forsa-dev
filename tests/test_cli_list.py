@@ -56,20 +56,26 @@ def test_list_shows_environments(tmp_path):
     assert "experiment" in result.output
 
 
-# Pure logic test — no subprocess needed
+# Pure logic tests — no subprocess needed
 def test_check_status_tmux_missing_port_closed():
-    status = check_status(tmux_exists=False, port_open=False)
+    status = check_status(tmux_status="missing", served=False, port_open=False)
     assert status.tmux == "missing"
     assert status.server == "stopped"
 
 
-def test_check_status_tmux_exists_port_open():
-    status = check_status(tmux_exists=True, port_open=True)
+def test_check_status_tmux_active_served_port_open():
+    status = check_status(tmux_status="active", served=True, port_open=True)
     assert status.tmux == "active"
     assert status.server == "running"
 
 
-def test_check_status_tmux_exists_port_closed():
-    status = check_status(tmux_exists=True, port_open=False)
-    assert status.tmux == "active"
+def test_check_status_tmux_detached_not_served():
+    status = check_status(tmux_status="detached", served=False, port_open=False)
+    assert status.tmux == "detached"
     assert status.server == "stopped"
+
+
+def test_check_status_served_port_closed():
+    status = check_status(tmux_status="active", served=True, port_open=False)
+    assert status.tmux == "active"
+    assert status.server == "crashed"

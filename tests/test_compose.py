@@ -57,3 +57,10 @@ def test_compose_required_env_vars(compose_content):
     assert env["FORSA_WEBSERVER_PORT"] == 8000
     assert env["JULIA_PROJECT"] == "/app/src/julia/forsa-env"
     assert env["GRB_LICENSE_FILE"] == "/opt/gurobi/gurobi.lic"
+
+
+def test_compose_command(compose_content):
+    command = compose_content["services"]["forsa"]["command"]
+    full_cmd = " ".join(command)
+    assert "pip install" in full_cmd
+    assert "forsa.main" in full_cmd

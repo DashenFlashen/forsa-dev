@@ -5,15 +5,18 @@ from dataclasses import dataclass
 
 @dataclass
 class Status:
-    tmux: str   # "active" | "missing"
-    server: str  # "running" | "stopped"
+    tmux: str   # "active" | "detached" | "missing"
+    server: str  # "running" | "crashed" | "stopped"
 
 
-def check_status(tmux_exists: bool, port_open: bool) -> Status:
-    return Status(
-        tmux="active" if tmux_exists else "missing",
-        server="running" if port_open else "stopped",
-    )
+def check_status(tmux_status: str, served: bool, port_open: bool) -> Status:
+    if served and port_open:
+        server = "running"
+    elif served and not port_open:
+        server = "crashed"
+    else:
+        server = "stopped"
+    return Status(tmux=tmux_status, server=server)
 
 
 def port_is_open(port: int, host: str = "localhost") -> bool:

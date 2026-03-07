@@ -1,6 +1,6 @@
 import subprocess
 import pytest
-from forsa_dev.tmux import create_session, kill_session, session_exists
+from forsa_dev.tmux import create_session, kill_session, session_exists, session_status
 
 
 pytestmark = pytest.mark.skipif(
@@ -30,3 +30,13 @@ def test_kill_session(tmp_path):
 
 def test_session_exists_false_when_missing():
     assert not session_exists("forsa-dev-nonexistent-xyz")
+
+
+def test_session_status_detached(tmp_path):
+    create_session(session=SESSION, cwd=tmp_path)
+    # Session created with -d (detached), so status should be "detached"
+    assert session_status(SESSION) == "detached"
+
+
+def test_session_status_missing():
+    assert session_status("forsa-dev-nonexistent-xyz") == "missing"

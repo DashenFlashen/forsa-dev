@@ -230,6 +230,9 @@ def down(
     typer.echo("Removing worktree...")
     git.remove_worktree(cfg.repo, env.worktree)
 
+    typer.echo("Deleting branch...")
+    git.delete_branch(cfg.repo, env.branch, force=force)
+
     # Delete state
     delete_state(user, name, cfg.state_dir)
     typer.echo(f"Environment '{_full_name(user, name)}' removed.")
@@ -259,6 +262,18 @@ def attach(
     tmux.attach_session(env.tmux_session)
 
 
+def _format_uptime(served_at: datetime | None) -> str:
+    if served_at is None:
+        return "-"
+    delta = datetime.now(tz=timezone.utc) - served_at
+    seconds = int(delta.total_seconds())
+    if seconds < 3600:
+        return f"{seconds // 60}m"
+    if seconds < 86400:
+        return f"{seconds // 3600}h {(seconds % 3600) // 60}m"
+    return f"{seconds // 86400}d {(seconds % 86400) // 3600}h"
+
+
 @app.command(name="list")
 def list_envs(
     config: ConfigOption = None,
@@ -283,11 +298,12 @@ def list_envs(
     table.add_column("SERVER")
     table.add_column("PORT")
     table.add_column("URL")
+    table.add_column("UPTIME")
 
     for env in envs:
-        tmux_alive = tmux.session_exists(env.tmux_session)
+        tmux_stat = tmux.session_status(env.tmux_session)
         port_open = port_is_open(env.port)
-        status = check_status(tmux_exists=tmux_alive, port_open=port_open)
+        status = check_status(tmux_status=tmux_stat, served=env.url is not None, port_open=port_open)
 
         table.add_row(
             env.name,
@@ -296,6 +312,7 @@ def list_envs(
             status.server,
             str(env.port),
             env.url or "-",
+            _format_uptime(env.served_at),
         )
 
     console.print(table)

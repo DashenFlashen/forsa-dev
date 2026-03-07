@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 import pytest
-from forsa_dev.git import create_branch_and_worktree, remove_worktree, branch_is_pushed
+from forsa_dev.git import create_branch_and_worktree, remove_worktree, branch_is_pushed, delete_branch
 
 
 def test_create_branch_and_worktree(git_repo, tmp_path):
@@ -43,3 +43,27 @@ def test_branch_is_pushed_false_for_local_branch(git_repo, tmp_path):
     worktree_path = tmp_path / "worktrees" / "feature-z"
     create_branch_and_worktree(git_repo, "feature-z", worktree_path, "main")
     assert not branch_is_pushed(repo=git_repo, branch="feature-z")
+
+
+def test_delete_branch(git_repo, tmp_path):
+    worktree_path = tmp_path / "worktrees" / "feature-del"
+    create_branch_and_worktree(git_repo, "feature-del", worktree_path, "main")
+    remove_worktree(git_repo, worktree_path)
+    delete_branch(git_repo, "feature-del")
+    result = subprocess.run(
+        ["git", "branch", "--list", "feature-del"],
+        capture_output=True, text=True, cwd=git_repo
+    )
+    assert result.stdout.strip() == ""
+
+
+def test_delete_branch_force(git_repo, tmp_path):
+    worktree_path = tmp_path / "worktrees" / "feature-force"
+    create_branch_and_worktree(git_repo, "feature-force", worktree_path, "main")
+    remove_worktree(git_repo, worktree_path)
+    delete_branch(git_repo, "feature-force", force=True)
+    result = subprocess.run(
+        ["git", "branch", "--list", "feature-force"],
+        capture_output=True, text=True, cwd=git_repo
+    )
+    assert result.stdout.strip() == ""

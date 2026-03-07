@@ -26,13 +26,25 @@ def kill_session(session: str) -> None:
         raise RuntimeError(f"tmux kill-session failed: {result.stderr}")
 
 
+def session_status(session: str) -> str:
+    """Return "active", "detached", or "missing" for the given tmux session."""
+    result = subprocess.run(
+        ["tmux", "list-sessions", "-F", "#{session_name} #{session_attached}"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return "missing"
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if parts[0] == session:
+            return "active" if int(parts[1]) > 0 else "detached"
+    return "missing"
+
+
 def session_exists(session: str) -> bool:
     """Return True if the tmux session exists."""
-    result = subprocess.run(
-        ["tmux", "has-session", "-t", session],
-        capture_output=True,
-    )
-    return result.returncode == 0
+    return session_status(session) != "missing"
 
 
 def attach_session(session: str) -> None:

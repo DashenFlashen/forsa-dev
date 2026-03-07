@@ -1,20 +1,36 @@
+import json
 import pytest
 from pytest_httpserver import HTTPServer
+from werkzeug.wrappers import Request
 from forsa_dev.caddy import register_route, deregister_route
 
 
 def test_register_route_success(httpserver: HTTPServer):
+    received: list[dict] = []
+
+    def handler(req: Request):
+        received.append(json.loads(req.data))
+        from werkzeug.wrappers import Response
+        return Response("", status=200)
+
     httpserver.expect_request(
         "/config/apps/http/servers/srv0/routes/",
         method="POST",
-    ).respond_with_data("", status=200)
+    ).respond_with_handler(handler)
 
     register_route(
         caddy_admin=httpserver.url_for(""),
         name="ticket-42",
         port=3002,
     )
-    # No exception raised — success
+
+    assert len(received) == 1
+    handlers = received[0]["handle"]
+    handler_types = [h["handler"] for h in handlers]
+    assert "rewrite" in handler_types
+    assert "reverse_proxy" in handler_types
+    rewrite = next(h for h in handlers if h["handler"] == "rewrite")
+    assert rewrite["strip_path_prefix"] == "/ticket-42"
 
 
 def test_deregister_route_success(httpserver: HTTPServer):

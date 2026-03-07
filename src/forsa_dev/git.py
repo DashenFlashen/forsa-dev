@@ -46,3 +46,11 @@ def branch_is_pushed(repo: Path, branch: str) -> bool:
     if result.returncode != 0:
         raise RuntimeError(f"git branch -r failed: {result.stderr}")
     return bool(result.stdout.strip())
+
+
+def delete_branch(repo: Path, branch: str, force: bool = False) -> None:
+    """Delete a git branch. Use force=True to delete unmerged branches."""
+    flag = "-D" if force else "-d"
+    result = _git(["branch", flag, branch], repo)
+    if result.returncode != 0:
+        raise RuntimeError(f"git branch {flag} failed: {result.stderr}")

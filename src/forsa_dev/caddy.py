@@ -16,10 +16,11 @@ def register_route(caddy_admin: str, name: str, port: int) -> None:
         "@id": _route_id(name),
         "match": [{"path": [f"/{name}/*"]}],
         "handle": [
+            {"handler": "rewrite", "strip_path_prefix": f"/{name}"},
             {
                 "handler": "reverse_proxy",
                 "upstreams": [{"dial": f"localhost:{port}"}],
-            }
+            },
         ],
     }
     try:
