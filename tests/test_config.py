@@ -22,6 +22,7 @@ def test_load_config_from_file(tmp_path):
     assert config.worktree_dir == Path("/home/anders/worktrees")
     assert config.port_range_start == 3000
     assert config.port_range_end == 3099
+    assert config.dashboard_port == 8080
 
 
 def test_load_config_missing_file_raises(tmp_path):
@@ -63,3 +64,22 @@ def test_load_config_without_dashboard_port_defaults_to_8080(tmp_path):
     )
     config = load_config(config_file)
     assert config.dashboard_port == 8080
+
+
+def test_save_config_roundtrip_nondefault_dashboard_port(tmp_path):
+    config_file = tmp_path / "config.toml"
+    config = Config(
+        repo=Path("/home/anders/forsa"),
+        worktree_dir=Path("/home/anders/worktrees"),
+        data_dir=Path("/data/dev"),
+        state_dir=Path("/tmp/forsa-dev"),
+        base_url="optbox.example.ts.net",
+        docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000,
+        port_range_end=3099,
+        dashboard_port=9090,
+    )
+    save_config(config, config_file)
+    loaded = load_config(config_file)
+    assert loaded.dashboard_port == 9090

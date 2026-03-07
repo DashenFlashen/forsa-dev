@@ -8,6 +8,7 @@ from typing import Any
 import tomli_w
 
 DEFAULT_CONFIG_PATH = Path.home() / ".config" / "forsa" / "config.toml"
+_DEFAULT_DASHBOARD_PORT = 8080
 
 
 @dataclass(frozen=True)
@@ -21,7 +22,7 @@ class Config:
     gurobi_lic: Path
     port_range_start: int
     port_range_end: int
-    dashboard_port: int = 8080
+    dashboard_port: int = _DEFAULT_DASHBOARD_PORT
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
@@ -41,7 +42,7 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
         gurobi_lic=Path(data["gurobi_lic"]),
         port_range_start=int(data["port_range_start"]),
         port_range_end=int(data["port_range_end"]),
-        dashboard_port=int(data.get("dashboard_port", 8080)),
+        dashboard_port=int(data.get("dashboard_port", _DEFAULT_DASHBOARD_PORT)),
     )
 
 
