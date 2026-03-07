@@ -1,10 +1,13 @@
 from __future__ import annotations
 import getpass
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
+
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
 from forsa_dev import caddy, git, tmux
 from forsa_dev.compose import generate_compose
@@ -87,32 +90,31 @@ def up(
     git.create_branch_and_worktree(cfg.repo, name, worktree, from_branch)
 
     typer.echo("Allocating port...")
-    port = allocate_port(cfg.state_dir, cfg.port_range_start, cfg.port_range_end)
+    with allocate_port(cfg.state_dir, cfg.port_range_start, cfg.port_range_end) as port:
+        typer.echo(f"Generating docker-compose.dev.yml (port {port})...")
+        compose_file = generate_compose(
+            worktree=worktree,
+            user=user,
+            name=name,
+            port=port,
+            data_dir=cfg.data_dir,
+            docker_image=cfg.docker_image,
+            gurobi_lic=cfg.gurobi_lic,
+        )
 
-    typer.echo(f"Generating docker-compose.dev.yml (port {port})...")
-    compose_file = generate_compose(
-        worktree=worktree,
-        user=user,
-        name=name,
-        port=port,
-        data_dir=cfg.data_dir,
-        docker_image=cfg.docker_image,
-        gurobi_lic=cfg.gurobi_lic,
-    )
-
-    env = Environment(
-        name=name,
-        user=user,
-        branch=name,
-        worktree=worktree,
-        tmux_session=full_name,
-        compose_file=compose_file,
-        port=port,
-        url=None,
-        created_at=datetime.now(tz=timezone.utc),
-        served_at=None,
-    )
-    save_state(env, cfg.state_dir)
+        env = Environment(
+            name=name,
+            user=user,
+            branch=name,
+            worktree=worktree,
+            tmux_session=full_name,
+            compose_file=compose_file,
+            port=port,
+            url=None,
+            created_at=datetime.now(tz=timezone.utc),
+            served_at=None,
+        )
+        save_state(env, cfg.state_dir)
 
     typer.echo(f"Starting tmux session '{full_name}'...")
     tmux.create_session(full_name, worktree)
@@ -147,7 +149,7 @@ def serve(
         typer.echo("Error: docker compose up failed.", err=True)
         raise typer.Exit(1)
 
-    url = f"{cfg.base_url}/{name}/"
+    url = f"https://{cfg.base_url}/{name}/"
     caddy.register_route(cfg.caddy_admin, name, env.port)
 
     updated = Environment(
@@ -216,11 +218,9 @@ def down(
         )
         raise typer.Exit(1)
 
-    # Stop server if running
-    if env.url:
-        typer.echo("Stopping server...")
-        subprocess.run(_compose_cmd(env, "down"), check=False)
-        caddy.deregister_route(cfg.caddy_admin, name)
+    typer.echo("Stopping server...")
+    subprocess.run(_compose_cmd(env, "down"), check=False)
+    caddy.deregister_route(cfg.caddy_admin, name)
 
     # Kill tmux
     typer.echo("Killing tmux session...")

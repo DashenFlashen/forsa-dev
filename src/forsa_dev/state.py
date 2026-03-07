@@ -18,18 +18,13 @@ class Environment:
     created_at: datetime
     served_at: datetime | None
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Environment):
-            return NotImplemented
-        return asdict(self) == asdict(other)
-
-
 def _state_path(user: str, name: str, state_dir: Path) -> Path:
     return state_dir / f"{user}-{name}.json"
 
 
 def _serialize(env: Environment) -> dict:
     d = asdict(env)
+    # asdict() leaves Path and datetime objects as-is; convert to JSON-compatible types
     d["worktree"] = str(env.worktree)
     d["compose_file"] = str(env.compose_file)
     d["created_at"] = env.created_at.isoformat()

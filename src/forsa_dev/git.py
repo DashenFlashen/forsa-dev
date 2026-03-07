@@ -43,4 +43,6 @@ def remove_worktree(repo: Path, worktree: Path) -> None:
 def branch_is_pushed(repo: Path, branch: str) -> bool:
     """Return True if the branch has a remote tracking ref."""
     result = _git(["branch", "-r", "--contains", branch], repo)
+    if result.returncode != 0:
+        raise RuntimeError(f"git branch -r failed: {result.stderr}")
     return bool(result.stdout.strip())

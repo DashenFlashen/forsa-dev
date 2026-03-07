@@ -23,23 +23,6 @@ class Config:
     port_range_start: int
     port_range_end: int
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Config):
-            return NotImplemented
-        return (
-            self.repo == other.repo
-            and self.worktree_dir == other.worktree_dir
-            and self.data_dir == other.data_dir
-            and self.state_dir == other.state_dir
-            and self.caddy_admin == other.caddy_admin
-            and self.base_url == other.base_url
-            and self.docker_image == other.docker_image
-            and self.gurobi_lic == other.gurobi_lic
-            and self.port_range_start == other.port_range_start
-            and self.port_range_end == other.port_range_end
-        )
-
-
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}\nRun `forsa-dev init` to create it.")

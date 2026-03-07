@@ -21,19 +21,20 @@ def _env(name: str, port: int, state_dir: Path) -> Environment:
 
 
 def test_allocate_first_port_in_range(tmp_path):
-    port = allocate_port(tmp_path, start=3000, end=3099)
-    assert port == 3000
+    with allocate_port(tmp_path, start=3000, end=3099) as port:
+        assert port == 3000
 
 
 def test_allocate_skips_used_ports(tmp_path):
     save_state(_env("one", 3000, tmp_path), tmp_path)
     save_state(_env("two", 3001, tmp_path), tmp_path)
-    port = allocate_port(tmp_path, start=3000, end=3099)
-    assert port == 3002
+    with allocate_port(tmp_path, start=3000, end=3099) as port:
+        assert port == 3002
 
 
 def test_allocate_raises_when_range_exhausted(tmp_path):
     for i in range(3):
         save_state(_env(f"env-{i}", 3000 + i, tmp_path), tmp_path)
     with pytest.raises(RuntimeError, match="No free ports"):
-        allocate_port(tmp_path, start=3000, end=3002)
+        with allocate_port(tmp_path, start=3000, end=3002):
+            pass
