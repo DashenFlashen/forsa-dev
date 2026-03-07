@@ -1,0 +1,30 @@
+[project]
+name = "forsa-dev"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.12",
+    "rich>=13",
+    "requests>=2.32",
+    "tomli-w>=1.1",
+]
+
+[project.scripts]
+forsa-dev = "forsa_dev.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/forsa_dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-httpserver>=1.1",
+    "pyyaml>=6",
+]

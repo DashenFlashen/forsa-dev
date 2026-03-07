@@ -1,0 +1,45 @@
+import subprocess
+from pathlib import Path
+import pytest
+from forsa_dev.git import create_branch_and_worktree, remove_worktree, branch_is_pushed
+
+
+def test_create_branch_and_worktree(git_repo, tmp_path):
+    worktree_path = tmp_path / "worktrees" / "feature-x"
+    create_branch_and_worktree(
+        repo=git_repo,
+        branch="feature-x",
+        worktree=worktree_path,
+        from_branch="main",
+    )
+    assert worktree_path.exists()
+    result = subprocess.run(
+        ["git", "branch", "--list", "feature-x"],
+        capture_output=True, text=True, cwd=git_repo
+    )
+    assert "feature-x" in result.stdout
+
+
+def test_create_branch_fails_if_branch_exists(git_repo, tmp_path):
+    worktree_path = tmp_path / "worktrees" / "main-copy"
+    with pytest.raises(RuntimeError, match="already exists"):
+        create_branch_and_worktree(
+            repo=git_repo,
+            branch="main",
+            worktree=worktree_path,
+            from_branch="main",
+        )
+
+
+def test_remove_worktree(git_repo, tmp_path):
+    worktree_path = tmp_path / "worktrees" / "feature-y"
+    create_branch_and_worktree(git_repo, "feature-y", worktree_path, "main")
+    assert worktree_path.exists()
+    remove_worktree(repo=git_repo, worktree=worktree_path)
+    assert not worktree_path.exists()
+
+
+def test_branch_is_pushed_false_for_local_branch(git_repo, tmp_path):
+    worktree_path = tmp_path / "worktrees" / "feature-z"
+    create_branch_and_worktree(git_repo, "feature-z", worktree_path, "main")
+    assert not branch_is_pushed(repo=git_repo, branch="feature-z")
