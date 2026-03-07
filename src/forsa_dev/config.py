@@ -23,6 +23,7 @@ class Config:
     port_range_start: int
     port_range_end: int
 
+
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}\nRun `forsa-dev init` to create it.")

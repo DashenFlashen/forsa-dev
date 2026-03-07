@@ -1,6 +1,7 @@
 from __future__ import annotations
 import getpass
 import logging
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Optional
@@ -126,7 +127,7 @@ def up(
 def _compose_cmd(env: Environment, *args: str) -> list[str]:
     return [
         "docker", "compose",
-        "-p", env.tmux_session,
+        "-p", _full_name(env.user, env.name),
         "-f", str(env.compose_file),
         *args,
     ]
@@ -138,7 +139,6 @@ def serve(
     config: ConfigOption = None,
 ):
     """Start the Docker server for an environment."""
-    import subprocess
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
@@ -167,7 +167,6 @@ def stop(
     config: ConfigOption = None,
 ):
     """Stop the Docker server. Tmux session is preserved."""
-    import subprocess
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
@@ -189,7 +188,6 @@ def restart(
     config: ConfigOption = None,
 ):
     """Restart the Docker containers without changing port or Caddy registration."""
-    import subprocess
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
@@ -205,7 +203,6 @@ def down(
     config: ConfigOption = None,
 ):
     """Stop server, kill tmux, remove worktree. Checks branch is pushed first."""
-    import subprocess
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
@@ -244,7 +241,6 @@ def logs(
     config: ConfigOption = None,
 ):
     """Stream Docker logs for an environment."""
-    import subprocess
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)

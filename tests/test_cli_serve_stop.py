@@ -61,8 +61,7 @@ def test_serve_updates_state(config_file, env_with_state):
         result = runner.invoke(app, ["serve", "ticket-42", "--config", str(config_file)])
     assert result.exit_code == 0, result.output
     updated = load_state(USER, "ticket-42", state_dir)
-    assert updated.url is not None
-    assert "ticket-42" in updated.url
+    assert updated.url == "https://optbox.example.ts.net/ticket-42/"
     assert updated.served_at is not None
 
 

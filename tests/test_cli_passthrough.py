@@ -47,6 +47,16 @@ def test_logs_invokes_docker_compose(env_setup):
     assert "-f" in call_args
 
 
+def test_restart_invokes_docker_compose(env_setup):
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        result = runner.invoke(app, ["restart", "ticket-42", "--config", str(env_setup)])
+    assert result.exit_code == 0
+    call_args = mock_run.call_args[0][0]
+    assert "restart" in call_args
+    assert f"{USER}-ticket-42" in call_args
+
+
 def test_attach_calls_tmux(env_setup):
     with patch("forsa_dev.tmux.attach_session") as mock_attach:
         result = runner.invoke(app, ["attach", "ticket-42", "--config", str(env_setup)])

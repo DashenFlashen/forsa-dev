@@ -1,8 +1,11 @@
 from __future__ import annotations
 import json
+import logging
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -18,13 +21,14 @@ class Environment:
     created_at: datetime
     served_at: datetime | None
 
+
 def _state_path(user: str, name: str, state_dir: Path) -> Path:
     return state_dir / f"{user}-{name}.json"
 
 
 def _serialize(env: Environment) -> dict:
     d = asdict(env)
-    # asdict() leaves Path and datetime objects as-is; convert to JSON-compatible types
+    # Path and datetime fields must be serialised to strings for JSON
     d["worktree"] = str(env.worktree)
     d["compose_file"] = str(env.compose_file)
     d["created_at"] = env.created_at.isoformat()
@@ -67,7 +71,10 @@ def delete_state(user: str, name: str, state_dir: Path) -> None:
 def list_states(state_dir: Path) -> list[Environment]:
     if not state_dir.exists():
         return []
-    return [
-        _deserialize(json.loads(p.read_text()))
-        for p in sorted(state_dir.glob("*.json"))
-    ]
+    envs = []
+    for p in sorted(state_dir.glob("*.json")):
+        try:
+            envs.append(_deserialize(json.loads(p.read_text())))
+        except (KeyError, TypeError, ValueError):
+            logger.warning("Skipping malformed state file: %s", p)
+    return envs
