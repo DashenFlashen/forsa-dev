@@ -26,4 +26,5 @@ testpaths = ["tests"]
 dev = [
     "pytest>=8",
     "pytest-httpserver>=1.1",
+    "pyyaml>=6",
 ]
