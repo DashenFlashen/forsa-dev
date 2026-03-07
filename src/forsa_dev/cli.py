@@ -14,7 +14,7 @@ from forsa_dev import git, tmux
 from forsa_dev.compose import generate_compose
 from forsa_dev.config import DEFAULT_CONFIG_PATH, Config, load_config, save_config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
-from forsa_dev.operations import _compose_cmd, restart_env, serve_env, stop_env
+from forsa_dev.operations import compose_cmd, restart_env, serve_env, stop_env
 from forsa_dev.ports import allocate_port
 from forsa_dev.state import Environment, delete_state, list_states, load_state, save_state
 
@@ -211,7 +211,7 @@ def down(
     typer.echo("Stopping server...")
     # Always run docker compose down even if never served — it's idempotent and
     # clears any containers that may have been started outside of forsa-dev.
-    subprocess.run(_compose_cmd(env, "down"), check=False)
+    subprocess.run(compose_cmd(env, "down"), check=False)
 
     # Kill tmux
     typer.echo("Killing tmux session...")
@@ -247,7 +247,7 @@ def logs(
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
-    subprocess.run(_compose_cmd(env, "logs", "-f"))
+    subprocess.run(compose_cmd(env, "logs", "-f"))
 
 
 @app.command()

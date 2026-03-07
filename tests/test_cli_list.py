@@ -83,30 +83,30 @@ def test_check_status_served_port_closed():
 
 
 # format_uptime unit tests
-def testformat_uptime_none():
+def test_format_uptime_none():
     assert format_uptime(None) == "-"
 
 
-def testformat_uptime_minutes():
+def test_format_uptime_minutes():
     served_at = datetime.now(tz=timezone.utc) - timedelta(minutes=42)
     assert format_uptime(served_at) == "42m"
 
 
-def testformat_uptime_zero_minutes():
+def test_format_uptime_zero_minutes():
     served_at = datetime.now(tz=timezone.utc) - timedelta(seconds=30)
     assert format_uptime(served_at) == "0m"
 
 
-def testformat_uptime_hours():
+def test_format_uptime_hours():
     served_at = datetime.now(tz=timezone.utc) - timedelta(hours=2, minutes=15)
     assert format_uptime(served_at) == "2h 15m"
 
 
-def testformat_uptime_exactly_one_hour():
+def test_format_uptime_exactly_one_hour():
     served_at = datetime.now(tz=timezone.utc) - timedelta(hours=1)
     assert format_uptime(served_at) == "1h 0m"
 
 
-def testformat_uptime_days():
+def test_format_uptime_days():
     served_at = datetime.now(tz=timezone.utc) - timedelta(days=3, hours=7)
     assert format_uptime(served_at) == "3d 7h"
