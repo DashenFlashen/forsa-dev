@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import subprocess
 from pathlib import Path
 
@@ -19,7 +20,10 @@ def create_branch_and_worktree(
     from_branch: str = "main",
 ) -> None:
     """Create a new git branch and check it out as a worktree."""
-    # Check branch doesn't already exist
+    # Check branch doesn't already exist.
+    # Note: there's a TOCTOU window between this check and `worktree add -b` below —
+    # two concurrent `up` calls for the same branch will both pass, and the second
+    # `worktree add` will fail with a raw git error rather than this friendly message.
     result = _git(["branch", "--list", branch], repo)
     if result.stdout.strip():
         raise RuntimeError(f"Branch '{branch}' already exists — it may belong to another user.")

@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from pathlib import Path
+
 import pytest
-from forsa_dev.state import Environment, load_state, save_state, delete_state, list_states
+
+from forsa_dev.state import Environment, delete_state, list_states, load_state, save_state
 
 
 def make_env(state_dir: Path) -> Environment:
@@ -67,7 +69,11 @@ def test_list_states_multiple(tmp_path):
 def test_state_with_url_roundtrips(tmp_path):
     env = make_env(tmp_path)
     env_with_url = Environment(
-        **{**env.__dict__, "url": "optbox.example.ts.net/ticket-42/", "served_at": datetime(2026, 3, 7, 22, 5, 0, tzinfo=timezone.utc)}
+        **{
+            **env.__dict__,
+            "url": "optbox.example.ts.net/ticket-42/",
+            "served_at": datetime(2026, 3, 7, 22, 5, 0, tzinfo=timezone.utc),
+        }
     )
     save_state(env_with_url, tmp_path)
     loaded = load_state("anders", "ticket-42", tmp_path)

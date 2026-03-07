@@ -1,8 +1,9 @@
 from pathlib import Path
+
 from typer.testing import CliRunner
+
 from forsa_dev.cli import app
 from forsa_dev.config import load_config
-
 
 runner = CliRunner()
 

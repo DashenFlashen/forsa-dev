@@ -1,12 +1,12 @@
 import getpass
 from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 from typer.testing import CliRunner
+
 from forsa_dev.cli import app
 from forsa_dev.state import Environment, save_state
-
 
 runner = CliRunner()
 USER = getpass.getuser()

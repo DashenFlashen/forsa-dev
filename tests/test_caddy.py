@@ -1,8 +1,9 @@
 import json
-import pytest
+
 from pytest_httpserver import HTTPServer
 from werkzeug.wrappers import Request
-from forsa_dev.caddy import register_route, deregister_route
+
+from forsa_dev.caddy import deregister_route, register_route
 
 
 def test_register_route_success(httpserver: HTTPServer):

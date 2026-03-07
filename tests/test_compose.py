@@ -1,6 +1,8 @@
 from pathlib import Path
-import yaml
+
 import pytest
+import yaml
+
 from forsa_dev.compose import generate_compose
 
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import getpass
 import logging
 import subprocess
@@ -8,14 +9,14 @@ from typing import Annotated, Optional
 
 import typer
 
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
-
 from forsa_dev import caddy, git, tmux
 from forsa_dev.compose import generate_compose
 from forsa_dev.config import DEFAULT_CONFIG_PATH, Config, load_config, save_config
 from forsa_dev.list_status import check_status, port_is_open
 from forsa_dev.ports import allocate_port
 from forsa_dev.state import Environment, delete_state, list_states, load_state, save_state
+
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
 app = typer.Typer(help="Manage FORSA development environments.")
 
@@ -41,13 +42,17 @@ def init(
     config_path = config or DEFAULT_CONFIG_PATH
     typer.echo("Setting up forsa-dev configuration.")
     repo = typer.prompt("Path to your FORSA git repo", default=str(Path.home() / "forsa"))
-    worktree_dir = typer.prompt("Directory for git worktrees", default=str(Path.home() / "worktrees"))
+    worktree_dir = typer.prompt(
+        "Directory for git worktrees", default=str(Path.home() / "worktrees")
+    )
     data_dir = typer.prompt("Default data directory", default="/data/dev")
     state_dir = typer.prompt("Shared state directory", default="/var/lib/forsa-dev")
     caddy_admin = typer.prompt("Caddy admin API URL", default="http://localhost:2019")
     base_url = typer.prompt("Base URL (e.g. optbox.tailnet.ts.net)")
     docker_image = typer.prompt("Docker image name", default="forsa:latest")
-    gurobi_lic = typer.prompt("Path to gurobi.lic on this machine", default="/opt/gurobi/gurobi.lic")
+    gurobi_lic = typer.prompt(
+        "Path to gurobi.lic on this machine", default="/opt/gurobi/gurobi.lic"
+    )
     port_start = typer.prompt("Port range start", default=3000)
     port_end = typer.prompt("Port range end", default=3099)
 
@@ -82,7 +87,10 @@ def up(
     # Guard: already exists
     try:
         load_state(user, name, cfg.state_dir)
-        typer.echo(f"Error: environment '{full_name}' already exists. Use `forsa-dev down {name}` first.", err=True)
+        typer.echo(
+            f"Error: environment '{full_name}' already exists. Use `forsa-dev down {name}` first.",
+            err=True,
+        )
         raise typer.Exit(1)
     except FileNotFoundError:
         pass
@@ -118,7 +126,14 @@ def up(
         save_state(env, cfg.state_dir)
 
     typer.echo(f"Starting tmux session '{full_name}'...")
-    tmux.create_session(full_name, worktree)
+    try:
+        tmux.create_session(full_name, worktree)
+    except RuntimeError as e:
+        typer.echo(f"Error: {e}. Rolling back...", err=True)
+        delete_state(user, name, cfg.state_dir)
+        git.remove_worktree(cfg.repo, worktree)
+        git.delete_branch(cfg.repo, name, force=True)
+        raise typer.Exit(1)
 
     typer.echo(f"Ready. Attaching to '{full_name}'...")
     tmux.attach_session(full_name)
@@ -216,6 +231,8 @@ def down(
         raise typer.Exit(1)
 
     typer.echo("Stopping server...")
+    # Always run docker compose down even if never served — it's idempotent and
+    # clears any containers that may have been started outside of forsa-dev.
     subprocess.run(_compose_cmd(env, "down"), check=False)
     caddy.deregister_route(cfg.caddy_admin, name)
 
@@ -228,10 +245,16 @@ def down(
 
     # Remove worktree
     typer.echo("Removing worktree...")
-    git.remove_worktree(cfg.repo, env.worktree)
+    try:
+        git.remove_worktree(cfg.repo, env.worktree)
+    except RuntimeError as e:
+        typer.echo(f"Warning: {e}", err=True)
 
     typer.echo("Deleting branch...")
-    git.delete_branch(cfg.repo, env.branch, force=force)
+    try:
+        git.delete_branch(cfg.repo, env.branch, force=force)
+    except RuntimeError as e:
+        typer.echo(f"Warning: {e}", err=True)
 
     # Delete state
     delete_state(user, name, cfg.state_dir)
@@ -303,7 +326,9 @@ def list_envs(
     for env in envs:
         tmux_stat = tmux.session_status(env.tmux_session)
         port_open = port_is_open(env.port)
-        status = check_status(tmux_status=tmux_stat, served=env.url is not None, port_open=port_open)
+        status = check_status(
+            tmux_status=tmux_stat, served=env.url is not None, port_open=port_open
+        )
 
         table.add_row(
             env.name,

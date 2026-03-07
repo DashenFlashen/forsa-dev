@@ -1,6 +1,12 @@
 from __future__ import annotations
+
 from pathlib import Path
 
+_STARTUP_CMD = (
+    "cd /app/src/python/webserver"
+    " && pip install --no-deps --break-system-packages -e ."
+    " && python3 -m forsa.main"
+)
 
 _TEMPLATE = """\
 services:
@@ -25,7 +31,7 @@ services:
       FORSA_SPOT_PRICE_PATH: /app/data/elspot_prices.xlsx
       PYTHON: /usr/bin/python3
       GRB_LICENSE_FILE: /opt/gurobi/gurobi.lic
-    command: ["bash", "-c", "cd /app/src/python/webserver && pip install --no-deps --break-system-packages -e . && python3 -m forsa.main"]
+    command: ["bash", "-c", "{startup_cmd}"]
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/ready')"]
       interval: 10s
@@ -53,6 +59,7 @@ def generate_compose(
         port=port,
         data_dir=data_dir,
         gurobi_lic=gurobi_lic,
+        startup_cmd=_STARTUP_CMD,
     )
     compose_file = worktree / "docker-compose.dev.yml"
     compose_file.write_text(content)

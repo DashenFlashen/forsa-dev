@@ -1,12 +1,12 @@
 import getpass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import pytest
-from typer.testing import CliRunner
-from forsa_dev.cli import app
-from forsa_dev.state import Environment, save_state
-from forsa_dev.list_status import check_status, Status
 
+from typer.testing import CliRunner
+
+from forsa_dev.cli import _format_uptime, app
+from forsa_dev.list_status import check_status
+from forsa_dev.state import Environment, save_state
 
 runner = CliRunner()
 USER = getpass.getuser()
@@ -41,7 +41,10 @@ def test_list_empty(tmp_path):
 
 def test_list_shows_environments(tmp_path):
     state_dir = tmp_path / "state"
-    save_state(_env("ticket-42", USER, 3002, "optbox.example.ts.net/ticket-42/", state_dir), state_dir)
+    save_state(
+        _env("ticket-42", USER, 3002, "optbox.example.ts.net/ticket-42/", state_dir),
+        state_dir,
+    )
     save_state(_env("experiment", USER, 3003, None, state_dir), state_dir)
     cfg_file = tmp_path / "config.toml"
     cfg_file.write_text(
@@ -79,3 +82,33 @@ def test_check_status_served_port_closed():
     status = check_status(tmux_status="active", served=True, port_open=False)
     assert status.tmux == "active"
     assert status.server == "crashed"
+
+
+# _format_uptime unit tests
+def test_format_uptime_none():
+    assert _format_uptime(None) == "-"
+
+
+def test_format_uptime_minutes():
+    served_at = datetime.now(tz=timezone.utc) - timedelta(minutes=42)
+    assert _format_uptime(served_at) == "42m"
+
+
+def test_format_uptime_zero_minutes():
+    served_at = datetime.now(tz=timezone.utc) - timedelta(seconds=30)
+    assert _format_uptime(served_at) == "0m"
+
+
+def test_format_uptime_hours():
+    served_at = datetime.now(tz=timezone.utc) - timedelta(hours=2, minutes=15)
+    assert _format_uptime(served_at) == "2h 15m"
+
+
+def test_format_uptime_exactly_one_hour():
+    served_at = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+    assert _format_uptime(served_at) == "1h 0m"
+
+
+def test_format_uptime_days():
+    served_at = datetime.now(tz=timezone.utc) - timedelta(days=3, hours=7)
+    assert _format_uptime(served_at) == "3d 7h"

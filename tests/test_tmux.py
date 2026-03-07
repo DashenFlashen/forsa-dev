@@ -1,7 +1,8 @@
 import subprocess
-import pytest
-from forsa_dev.tmux import create_session, kill_session, session_exists, session_status
 
+import pytest
+
+from forsa_dev.tmux import create_session, kill_session, session_exists, session_status
 
 pytestmark = pytest.mark.skipif(
     subprocess.run(["which", "tmux"], capture_output=True).returncode != 0,

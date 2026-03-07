@@ -1,11 +1,11 @@
 from __future__ import annotations
+
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import tomli_w
-
 
 DEFAULT_CONFIG_PATH = Path.home() / ".config" / "forsa" / "config.toml"
 
@@ -26,7 +26,9 @@ class Config:
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
     if not path.exists():
-        raise FileNotFoundError(f"Config file not found: {path}\nRun `forsa-dev init` to create it.")
+        raise FileNotFoundError(
+            f"Config file not found: {path}\nRun `forsa-dev init` to create it."
+        )
     with path.open("rb") as f:
         data = tomllib.load(f)
     return Config(

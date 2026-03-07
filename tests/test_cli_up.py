@@ -1,11 +1,11 @@
 import getpass
-from pathlib import Path
 from unittest.mock import patch
+
 import pytest
 from typer.testing import CliRunner
+
 from forsa_dev.cli import app
 from forsa_dev.state import load_state
-
 
 runner = CliRunner()
 
@@ -54,9 +54,19 @@ def test_up_creates_worktree_state_and_compose(config_file, tmp_path):
 
 
 def test_up_fails_if_environment_already_exists(config_file, tmp_path):
-    user = getpass.getuser()
     with patch("forsa_dev.tmux.attach_session"), patch("forsa_dev.tmux.create_session"):
         runner.invoke(app, ["up", "feature-x", "--config", str(config_file)])
         result = runner.invoke(app, ["up", "feature-x", "--config", str(config_file)])
     assert result.exit_code != 0
     assert "already exists" in result.output
+
+
+def test_up_rolls_back_on_tmux_failure(config_file, tmp_path):
+    user = getpass.getuser()
+    state_dir = tmp_path / "state"
+    worktree_dir = tmp_path / "worktrees"
+    with patch("forsa_dev.tmux.create_session", side_effect=RuntimeError("tmux failed")):
+        result = runner.invoke(app, ["up", "feature-x", "--config", str(config_file)])
+    assert result.exit_code != 0
+    assert not (state_dir / f"{user}-feature-x.json").exists()
+    assert not (worktree_dir / "feature-x").exists()

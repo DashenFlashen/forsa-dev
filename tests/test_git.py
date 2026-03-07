@@ -1,7 +1,13 @@
 import subprocess
-from pathlib import Path
+
 import pytest
-from forsa_dev.git import create_branch_and_worktree, remove_worktree, branch_is_pushed, delete_branch
+
+from forsa_dev.git import (
+    branch_is_pushed,
+    create_branch_and_worktree,
+    delete_branch,
+    remove_worktree,
+)
 
 
 def test_create_branch_and_worktree(git_repo, tmp_path):
