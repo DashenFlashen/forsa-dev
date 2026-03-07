@@ -11,6 +11,19 @@ def _route_id(name: str) -> str:
     return f"forsa-{name}"
 
 
+def _ensure_server(admin_url: str) -> None:
+    """Create a minimal Caddy HTTP server if one doesn't exist yet."""
+    resp = requests.get(f"{admin_url}/config/apps/http/servers/srv0", timeout=5)
+    if resp.status_code == 404:
+        server = {"listen": [":80"], "routes": []}
+        resp = requests.put(
+            f"{admin_url}/config/apps/http/servers/srv0",
+            json=server,
+            timeout=5,
+        )
+        resp.raise_for_status()
+
+
 def register_route(caddy_admin: str, name: str, port: int) -> None:
     """Add a path-based reverse proxy route to Caddy. Warns if Caddy is unreachable."""
     route = {
@@ -26,6 +39,7 @@ def register_route(caddy_admin: str, name: str, port: int) -> None:
     }
     try:
         admin_url = caddy_admin.rstrip("/")
+        _ensure_server(admin_url)
         resp = requests.post(
             f"{admin_url}/config/apps/http/servers/srv0/routes/",
             json=route,
