@@ -262,6 +262,21 @@ def attach(
     tmux.attach_session(env.tmux_session)
 
 
+@app.command()
+def dashboard(
+    config: ConfigOption = None,
+    port: Annotated[Optional[int], typer.Option("--port", help="Override dashboard port.")] = None,
+):
+    """Start the web dashboard."""
+    import uvicorn
+    from forsa_dev.dashboard.server import create_app
+
+    cfg = _load(config)
+    actual_port = port if port is not None else cfg.dashboard_port
+    app_instance = create_app(cfg)
+    uvicorn.run(app_instance, host="0.0.0.0", port=actual_port)
+
+
 @app.command(name="list")
 def list_envs(
     config: ConfigOption = None,
