@@ -193,3 +193,45 @@ def restart(
     typer.echo("Restarting...")
     subprocess.run(_compose_cmd(env, "restart"), check=False)
     typer.echo("Done.")
+
+
+@app.command()
+def down(
+    name: str,
+    force: Annotated[bool, typer.Option("--force", help="Skip branch-push check.")] = False,
+    config: ConfigOption = None,
+):
+    """Stop server, kill tmux, remove worktree. Checks branch is pushed first."""
+    import subprocess
+    cfg = _load(config)
+    user = getpass.getuser()
+    env = load_state(user, name, cfg.state_dir)
+
+    if not force and not git.branch_is_pushed(cfg.repo, env.branch):
+        typer.echo(
+            f"Error: branch '{env.branch}' has not been pushed or merged.\n"
+            "Use --force to delete anyway.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # Stop server if running
+    if env.url:
+        typer.echo("Stopping server...")
+        subprocess.run(_compose_cmd(env, "down"), check=False)
+        caddy.deregister_route(cfg.caddy_admin, name)
+
+    # Kill tmux
+    typer.echo("Killing tmux session...")
+    try:
+        tmux.kill_session(env.tmux_session)
+    except RuntimeError:
+        pass  # session may already be gone
+
+    # Remove worktree
+    typer.echo("Removing worktree...")
+    git.remove_worktree(cfg.repo, env.worktree)
+
+    # Delete state
+    delete_state(user, name, cfg.state_dir)
+    typer.echo(f"Environment '{_full_name(user, name)}' removed.")
