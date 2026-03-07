@@ -238,6 +238,31 @@ def down(
     typer.echo(f"Environment '{_full_name(user, name)}' removed.")
 
 
+@app.command()
+def logs(
+    name: str,
+    config: ConfigOption = None,
+):
+    """Stream Docker logs for an environment."""
+    import subprocess
+    cfg = _load(config)
+    user = getpass.getuser()
+    env = load_state(user, name, cfg.state_dir)
+    subprocess.run(_compose_cmd(env, "logs", "-f"))
+
+
+@app.command()
+def attach(
+    name: str,
+    config: ConfigOption = None,
+):
+    """Attach to the tmux session for an environment."""
+    cfg = _load(config)
+    user = getpass.getuser()
+    env = load_state(user, name, cfg.state_dir)
+    tmux.attach_session(env.tmux_session)
+
+
 @app.command(name="list")
 def list_envs(
     config: ConfigOption = None,
