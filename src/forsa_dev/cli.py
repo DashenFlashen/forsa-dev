@@ -9,6 +9,7 @@ import typer
 from forsa_dev import caddy, git, tmux
 from forsa_dev.compose import generate_compose
 from forsa_dev.config import DEFAULT_CONFIG_PATH, Config, load_config, save_config
+from forsa_dev.list_status import check_status, port_is_open
 from forsa_dev.ports import allocate_port
 from forsa_dev.state import Environment, delete_state, list_states, load_state, save_state
 
@@ -235,3 +236,45 @@ def down(
     # Delete state
     delete_state(user, name, cfg.state_dir)
     typer.echo(f"Environment '{_full_name(user, name)}' removed.")
+
+
+@app.command(name="list")
+def list_envs(
+    config: ConfigOption = None,
+):
+    """List all environments with live status."""
+    from rich.console import Console
+    from rich.table import Table
+
+    cfg = _load(config)
+    envs = list_states(cfg.state_dir)
+
+    console = Console()
+
+    if not envs:
+        console.print("No environments found.")
+        return
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("NAME")
+    table.add_column("USER")
+    table.add_column("TMUX")
+    table.add_column("SERVER")
+    table.add_column("PORT")
+    table.add_column("URL")
+
+    for env in envs:
+        tmux_alive = tmux.session_exists(env.tmux_session)
+        port_open = port_is_open(env.port)
+        status = check_status(tmux_exists=tmux_alive, port_open=port_open)
+
+        table.add_row(
+            env.name,
+            env.user,
+            status.tmux,
+            status.server,
+            str(env.port),
+            env.url or "-",
+        )
+
+    console.print(table)
