@@ -22,7 +22,7 @@ def create_branch_and_worktree(
     # Check branch doesn't already exist
     result = _git(["branch", "--list", branch], repo)
     if result.stdout.strip():
-        raise RuntimeError(f"Branch '{branch}' already exists.")
+        raise RuntimeError(f"Branch '{branch}' already exists — it may belong to another user.")
 
     worktree.parent.mkdir(parents=True, exist_ok=True)
     result = _git(
