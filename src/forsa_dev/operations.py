@@ -22,7 +22,9 @@ def serve_env(cfg: Config, user: str, name: str) -> None:
     if result.returncode != 0:
         raise RuntimeError("docker compose up failed")
     url = f"http://{cfg.base_url}:{env.port}"
-    updated = Environment(**{**env.__dict__, "url": url, "served_at": datetime.now(tz=timezone.utc)})
+    updated = Environment(
+        **{**env.__dict__, "url": url, "served_at": datetime.now(tz=timezone.utc)}
+    )
     save_state(updated, cfg.state_dir)
 
 
