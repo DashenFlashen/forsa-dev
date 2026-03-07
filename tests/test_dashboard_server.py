@@ -155,3 +155,12 @@ def test_post_restart_calls_restart_env(cfg_and_env):
         response = client.post("/api/environments/ticket-42/restart")
     assert response.status_code == 200
     mock_restart.assert_called_once_with(cfg, USER, "ticket-42")
+
+
+def test_post_restart_404_when_not_found(cfg_and_env):
+    cfg, _ = cfg_and_env
+    app = create_app(cfg)
+    client = TestClient(app)
+    with patch("forsa_dev.dashboard.server.restart_env", side_effect=FileNotFoundError()):
+        response = client.post("/api/environments/nonexistent/restart")
+    assert response.status_code == 404
