@@ -202,7 +202,7 @@ def restart(
     name: str,
     config: ConfigOption = None,
 ):
-    """Restart the Docker containers without changing port or Caddy registration."""
+    """Restart the Docker containers."""
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
