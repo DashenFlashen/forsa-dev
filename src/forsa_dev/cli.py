@@ -118,3 +118,78 @@ def up(
 
     typer.echo(f"Ready. Attaching to '{full_name}'...")
     tmux.attach_session(full_name)
+
+
+def _compose_cmd(env: Environment, *args: str) -> list[str]:
+    return [
+        "docker", "compose",
+        "-p", env.tmux_session,
+        "-f", str(env.compose_file),
+        *args,
+    ]
+
+
+@app.command()
+def serve(
+    name: str,
+    config: ConfigOption = None,
+):
+    """Start the Docker server for an environment."""
+    import subprocess
+    cfg = _load(config)
+    user = getpass.getuser()
+    env = load_state(user, name, cfg.state_dir)
+
+    typer.echo(f"Starting server on port {env.port}...")
+    result = subprocess.run(_compose_cmd(env, "up", "-d"), check=False)
+    if result.returncode != 0:
+        typer.echo("Error: docker compose up failed.", err=True)
+        raise typer.Exit(1)
+
+    url = f"{cfg.base_url}/{name}/"
+    caddy.register_route(cfg.caddy_admin, name, env.port)
+
+    updated = Environment(
+        **{**env.__dict__,
+           "url": url,
+           "served_at": datetime.now(tz=timezone.utc)}
+    )
+    save_state(updated, cfg.state_dir)
+    typer.echo(f"Serving at {url}")
+
+
+@app.command()
+def stop(
+    name: str,
+    config: ConfigOption = None,
+):
+    """Stop the Docker server. Tmux session is preserved."""
+    import subprocess
+    cfg = _load(config)
+    user = getpass.getuser()
+    env = load_state(user, name, cfg.state_dir)
+
+    typer.echo("Stopping server...")
+    subprocess.run(_compose_cmd(env, "down"), check=False)
+    caddy.deregister_route(cfg.caddy_admin, name)
+
+    updated = Environment(
+        **{**env.__dict__, "url": None, "served_at": None}
+    )
+    save_state(updated, cfg.state_dir)
+    typer.echo("Server stopped. Tmux session preserved.")
+
+
+@app.command()
+def restart(
+    name: str,
+    config: ConfigOption = None,
+):
+    """Restart the Docker containers without changing port or Caddy registration."""
+    import subprocess
+    cfg = _load(config)
+    user = getpass.getuser()
+    env = load_state(user, name, cfg.state_dir)
+    typer.echo("Restarting...")
+    subprocess.run(_compose_cmd(env, "restart"), check=False)
+    typer.echo("Done.")
