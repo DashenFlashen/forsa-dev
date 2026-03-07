@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import getpass
 import logging
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -135,8 +136,11 @@ def up(
         git.delete_branch(cfg.repo, name, force=True)
         raise typer.Exit(1)
 
-    typer.echo(f"Ready. Attaching to '{full_name}'...")
-    tmux.attach_session(full_name)
+    if os.environ.get("TMUX"):
+        typer.echo(f"Ready. Run 'forsa-dev attach {name}' to switch to the session.")
+    else:
+        typer.echo(f"Ready. Attaching to '{full_name}'...")
+        tmux.attach_session(full_name)
 
 
 def _compose_cmd(env: Environment, *args: str) -> list[str]:
