@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import CreateEnvironment from './components/CreateEnvironment'
 import EnvironmentTable from './components/EnvironmentTable'
-import ErrorBanner from './components/ErrorBanner'
-import HealthBar from './components/HealthBar'
+import ErrorToast from './components/ErrorToast'
+import HealthPanel from './components/HealthPanel'
 import TerminalView from './components/TerminalView'
 import useInterval from './hooks/useInterval'
 
@@ -60,12 +60,12 @@ export default function App() {
     }
   }, [fetchEnvs])
 
-  const handleCreate = useCallback(async (name) => {
+  const handleCreate = useCallback(async (name, fromBranch) => {
     try {
       await apiFetch('/api/environments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, from_branch: 'main' }),
+        body: JSON.stringify({ name, from_branch: fromBranch }),
       })
       await fetchEnvs()
     } catch (e) {
@@ -82,9 +82,7 @@ export default function App() {
       await fetchEnvs()
     } catch (e) {
       if (e.message.includes('409')) {
-        if (window.confirm(`Branch '${name}' has not been pushed. Force delete?`)) {
-          await handleDelete(name, true)
-        }
+        throw e  // EnvironmentRow handles the force-delete modal
       } else {
         setError(e.message)
       }
@@ -103,35 +101,46 @@ export default function App() {
   const host = window.location.hostname
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
-      <h1 className="mb-6 text-2xl font-bold text-gray-100">forsa-dev</h1>
-      <ErrorBanner message={error} />
-      <HealthBar health={health} />
-      <CreateEnvironment onCreate={handleCreate} />
-      <div className={`flex gap-4 ${selectedEnv ? 'lg:flex-row' : ''}`}>
-        <div className={selectedEnv ? 'lg:w-1/3' : 'w-full'}>
-          <EnvironmentTable
-            envs={envs}
-            onAction={handleAction}
-            loadingActions={loadingActions}
-            onSelect={handleSelect}
-            selectedEnv={selectedEnv}
-            onDelete={handleDelete}
-            loadingDeletes={loadingDeletes}
-          />
+    <div className="min-h-screen bg-gray-950">
+      <header className="border-b border-gray-800 bg-gray-900">
+        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center gap-3">
+          <span className="text-lg font-bold tracking-tight text-gray-100">forsa-dev</span>
+          {health && (
+            <span className="text-xs text-gray-500 font-mono">
+              {window.location.hostname}
+            </span>
+          )}
         </div>
+      </header>
+      <ErrorToast message={error} onDismiss={() => setError(null)} />
+      <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+        <HealthPanel health={health} />
+        <CreateEnvironment onCreate={handleCreate} />
+        <div className={`flex gap-4 transition-all duration-300 ${selectedEnv ? 'lg:flex-row' : ''}`}>
+          <div className={`transition-all duration-300 ${selectedEnv ? 'lg:w-1/3' : 'w-full'}`}>
+            <EnvironmentTable
+              envs={envs}
+              onAction={handleAction}
+              loadingActions={loadingActions}
+              onSelect={handleSelect}
+              selectedEnv={selectedEnv}
+              onDelete={handleDelete}
+              loadingDeletes={loadingDeletes}
+            />
+          </div>
+          {selectedEnv && (
+            <div className="hidden lg:flex flex-1 h-[600px] rounded-lg border border-gray-800 overflow-hidden">
+              <TerminalView env={selectedEnv} host={host} onClose={handleCloseTerminal} />
+            </div>
+          )}
+        </div>
+        {/* Mobile: full-screen terminal overlay */}
         {selectedEnv && (
-          <div className="hidden lg:flex flex-1 h-[600px] rounded-lg border border-gray-800 overflow-hidden">
+          <div className="fixed inset-0 z-50 flex flex-col bg-gray-950 lg:hidden">
             <TerminalView env={selectedEnv} host={host} onClose={handleCloseTerminal} />
           </div>
         )}
-      </div>
-      {/* Mobile: full-screen terminal overlay */}
-      {selectedEnv && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-gray-950 lg:hidden">
-          <TerminalView env={selectedEnv} host={host} onClose={handleCloseTerminal} />
-        </div>
-      )}
+      </main>
     </div>
   )
 }
