@@ -1,10 +1,10 @@
 import EnvironmentRow from './EnvironmentRow'
 
-export default function EnvironmentTable({ envs, onAction, loadingActions }) {
+export default function EnvironmentTable({ envs, onAction, loadingActions, onSelect, selectedEnv, onDelete, loadingDeletes }) {
   if (envs.length === 0) {
     return (
       <p className="text-center text-gray-500 py-8">
-        No environments found. Run <code className="font-mono text-gray-300">forsa-dev up &lt;name&gt;</code> to create one.
+        No environments found. Use the form above to create one.
       </p>
     )
   }
@@ -19,6 +19,7 @@ export default function EnvironmentTable({ envs, onAction, loadingActions }) {
             <th className="px-4 py-3">Branch</th>
             <th className="px-4 py-3">Server</th>
             <th className="px-4 py-3">Tmux</th>
+            <th className="px-4 py-3">Ttyd</th>
             <th className="px-4 py-3">Port</th>
             <th className="px-4 py-3">Uptime</th>
             <th className="px-4 py-3">Actions</th>
@@ -31,6 +32,10 @@ export default function EnvironmentTable({ envs, onAction, loadingActions }) {
               env={env}
               onAction={onAction}
               loadingAction={loadingActions[env.name]}
+              onSelect={onSelect}
+              isSelected={selectedEnv?.name === env.name}
+              onDelete={onDelete}
+              loadingDelete={!!loadingDeletes[env.name]}
             />
           ))}
         </tbody>
