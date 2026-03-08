@@ -107,7 +107,7 @@ export default function App() {
           <span className="text-lg font-bold tracking-tight text-gray-100">forsa-dev</span>
           {health && (
             <span className="text-xs text-gray-500 font-mono">
-              {window.location.hostname}
+              {host}
             </span>
           )}
         </div>
