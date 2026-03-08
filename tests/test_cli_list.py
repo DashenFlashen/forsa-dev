@@ -53,7 +53,10 @@ def test_list_shows_environments(tmp_path):
         'docker_image = "forsa:latest"\n'
         'gurobi_lic = "/opt/gurobi/gurobi.lic"\nport_range_start = 3000\nport_range_end = 3099\n'
     )
-    result = runner.invoke(app, ["list", "--config", str(cfg_file)])
+    from unittest.mock import patch
+    with patch("forsa_dev.cli.tmux.session_status", return_value="active"), \
+         patch("forsa_dev.cli.port_is_open", return_value=False):
+        result = runner.invoke(app, ["list", "--config", str(cfg_file)])
     assert result.exit_code == 0
     assert "ticket-42" in result.output
     assert "experiment" in result.output

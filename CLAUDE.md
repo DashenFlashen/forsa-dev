@@ -19,10 +19,10 @@ The tool assumes these are installed on the host machine:
 
 ## Deployment context
 
-The tool runs on a shared Linux machine exposed via Tailscale. Caddy acts as a
-path-based reverse proxy, routing `https://<base_url>/<name>/` to each
-environment's container port. The Caddy admin API (`http://localhost:2019`) must
-be reachable for `serve` and `stop` to register/deregister routes.
+The tool runs on a shared Linux machine exposed via Tailscale. Each environment
+is reachable directly on its allocated port (`http://<base_url>:<port>/`). The
+dashboard (`forsa-dev dashboard`) serves a React UI for managing environments
+and exposes ttyd terminal sessions on a separate port range (7600–7699).
 
 State files live in a shared directory (default `/var/lib/forsa-dev`) so
 multiple users on the same machine can see each other's environments. Port
