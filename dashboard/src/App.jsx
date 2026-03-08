@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import CreateEnvironment from './components/CreateEnvironment'
+import ImportBranch from './components/ImportBranch'
 import EnvironmentTable from './components/EnvironmentTable'
 import ErrorToast from './components/ErrorToast'
 import HealthPanel from './components/HealthPanel'
@@ -65,12 +66,17 @@ export default function App() {
     }
   }, [fetchEnvs])
 
-  const handleCreate = useCallback(async (name, fromBranch, dataDir) => {
+  const handleCreate = useCallback(async (name, fromBranch, dataDir, existingBranch = null) => {
     try {
       await apiFetch('/api/environments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, from_branch: fromBranch, data_dir: dataDir || null }),
+        body: JSON.stringify({
+          name,
+          from_branch: fromBranch,
+          data_dir: dataDir || null,
+          existing_branch: existingBranch || null,
+        }),
       })
       await fetchEnvs()
     } catch (e) {
@@ -121,6 +127,7 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
         <HealthPanel health={health} />
         <CreateEnvironment onCreate={handleCreate} defaultDataDir={defaultDataDir} />
+        <ImportBranch onCreate={handleCreate} defaultDataDir={defaultDataDir} />
         <div className={`flex gap-4 transition-all duration-300 ${selectedEnv ? 'lg:flex-row' : ''}`}>
           <div className={`transition-all duration-300 ${selectedEnv ? 'lg:w-1/3' : 'w-full'}`}>
             <EnvironmentTable
