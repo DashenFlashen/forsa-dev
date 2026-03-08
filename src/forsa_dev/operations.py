@@ -54,6 +54,7 @@ def up_env(
     name: str,
     from_branch: str = "main",
     with_claude: bool = False,
+    data_dir: Path | None = None,
 ) -> Environment:
     if not _NAME_RE.match(name):
         raise ValueError(
@@ -83,7 +84,7 @@ def up_env(
                 user=user,
                 name=name,
                 port=port,
-                data_dir=cfg.data_dir,
+                data_dir=data_dir or cfg.data_dir,
                 docker_image=cfg.docker_image,
                 gurobi_lic=cfg.gurobi_lic,
             )

@@ -217,7 +217,7 @@ def test_post_create_environment_calls_up_env(cfg_and_env):
         client = TestClient(app)
         response = client.post("/api/environments", json={"name": "new-env", "from_branch": "main"})
     assert response.status_code == 200
-    mock_up.assert_called_once_with(cfg, USER, "new-env", from_branch="main", with_claude=True)
+    mock_up.assert_called_once_with(cfg, USER, "new-env", from_branch="main", with_claude=True, data_dir=None)
 
 
 def test_post_create_environment_respects_with_claude_false(cfg_and_env):
@@ -232,7 +232,7 @@ def test_post_create_environment_respects_with_claude_false(cfg_and_env):
         client = TestClient(app)
         response = client.post("/api/environments", json=payload)
     assert response.status_code == 200
-    mock_up.assert_called_once_with(cfg, USER, "new-env", from_branch="main", with_claude=False)
+    mock_up.assert_called_once_with(cfg, USER, "new-env", from_branch="main", with_claude=False, data_dir=None)
 
 
 def test_post_create_environment_409_if_exists(cfg_and_env):

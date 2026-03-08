@@ -121,6 +121,17 @@ def test_up_env_creates_environment(up_cfg):
     assert saved.ttyd_pid == 12345
 
 
+def test_up_env_custom_data_dir(up_cfg, tmp_path):
+    cfg = up_cfg
+    custom_data = tmp_path / "custom-data"
+    with patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=1):
+        up_env(cfg, USER, "new-feature", data_dir=custom_data)
+    worktree = cfg.worktree_dir / "new-feature"
+    compose = (worktree / "docker-compose.dev.yml").read_text()
+    assert str(custom_data) in compose
+
+
 def test_up_env_with_claude_passes_command_to_tmux(up_cfg):
     cfg = up_cfg
     with patch("forsa_dev.operations.tmux.create_session") as mock_create, \

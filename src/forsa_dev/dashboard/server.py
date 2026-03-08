@@ -22,6 +22,7 @@ class CreateEnvRequest(BaseModel):
     name: str
     from_branch: str = "main"
     with_claude: bool = True
+    data_dir: str | None = None
 
 
 def create_app(cfg: Config) -> FastAPI:
@@ -103,12 +104,20 @@ def create_app(cfg: Config) -> FastAPI:
             raise HTTPException(status_code=500, detail=str(e))
         return {"status": "ok"}
 
+    @app.get("/api/config")
+    def get_config() -> dict[str, Any]:
+        return {"data_dir": str(cfg.data_dir)}
+
     @app.post("/api/environments")
     def post_create_environment(body: CreateEnvRequest) -> dict[str, Any]:
         user = getpass.getuser()
+        data_dir = Path(body.data_dir) if body.data_dir else None
         try:
             env = up_env(
-                cfg, user, body.name, from_branch=body.from_branch, with_claude=body.with_claude
+                cfg, user, body.name,
+                from_branch=body.from_branch,
+                with_claude=body.with_claude,
+                data_dir=data_dir,
             )
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))

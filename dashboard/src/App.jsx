@@ -18,6 +18,7 @@ async function apiFetch(path, options) {
 export default function App() {
   const [envs, setEnvs] = useState([])
   const [health, setHealth] = useState(null)
+  const [defaultDataDir, setDefaultDataDir] = useState('')
   const [error, setError] = useState(null)
   const [loadingActions, setLoadingActions] = useState({})
   const [loadingDeletes, setLoadingDeletes] = useState({})
@@ -43,7 +44,11 @@ export default function App() {
   }, [])
 
   // Initial fetch on mount
-  useEffect(() => { fetchEnvs(); fetchHealth() }, [fetchEnvs, fetchHealth])
+  useEffect(() => {
+    fetchEnvs()
+    fetchHealth()
+    apiFetch('/api/config').then((d) => setDefaultDataDir(d.data_dir)).catch(() => {})
+  }, [fetchEnvs, fetchHealth])
 
   useInterval(fetchEnvs, ENV_POLL_MS)
   useInterval(fetchHealth, HEALTH_POLL_MS)
@@ -60,12 +65,12 @@ export default function App() {
     }
   }, [fetchEnvs])
 
-  const handleCreate = useCallback(async (name, fromBranch) => {
+  const handleCreate = useCallback(async (name, fromBranch, dataDir) => {
     try {
       await apiFetch('/api/environments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, from_branch: fromBranch }),
+        body: JSON.stringify({ name, from_branch: fromBranch, data_dir: dataDir || null }),
       })
       await fetchEnvs()
     } catch (e) {
@@ -115,7 +120,7 @@ export default function App() {
       <ErrorToast message={error} onDismiss={() => setError(null)} />
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
         <HealthPanel health={health} />
-        <CreateEnvironment onCreate={handleCreate} />
+        <CreateEnvironment onCreate={handleCreate} defaultDataDir={defaultDataDir} />
         <div className={`flex gap-4 transition-all duration-300 ${selectedEnv ? 'lg:flex-row' : ''}`}>
           <div className={`transition-all duration-300 ${selectedEnv ? 'lg:w-1/3' : 'w-full'}`}>
             <EnvironmentTable
