@@ -6,6 +6,7 @@ from forsa_dev.git import (
     branch_is_pushed,
     create_branch_and_worktree,
     delete_branch,
+    list_branches,
     remove_worktree,
 )
 
@@ -73,3 +74,24 @@ def test_delete_branch_force(git_repo, tmp_path):
         capture_output=True, text=True, cwd=git_repo
     )
     assert result.stdout.strip() == ""
+
+
+def test_list_branches_returns_available_branches(git_repo, tmp_path):
+    import subprocess
+    subprocess.run(["git", "branch", "old-work"], check=True, capture_output=True, cwd=git_repo)
+    subprocess.run(["git", "branch", "feature/cool-thing"], check=True, capture_output=True, cwd=git_repo)
+    branches = list_branches(git_repo)
+    assert "old-work" in branches
+    assert "feature/cool-thing" in branches
+    assert "main" not in branches
+
+
+def test_list_branches_excludes_worktree_branches(git_repo, tmp_path):
+    import subprocess
+    subprocess.run(["git", "branch", "in-use"], check=True, capture_output=True, cwd=git_repo)
+    subprocess.run(["git", "branch", "available"], check=True, capture_output=True, cwd=git_repo)
+    wt = tmp_path / "wt"
+    subprocess.run(["git", "worktree", "add", str(wt), "in-use"], check=True, capture_output=True, cwd=git_repo)
+    branches = list_branches(git_repo)
+    assert "in-use" not in branches
+    assert "available" in branches

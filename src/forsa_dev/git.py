@@ -58,3 +58,30 @@ def delete_branch(repo: Path, branch: str, force: bool = False) -> None:
     result = _git(["branch", flag, branch], repo)
     if result.returncode != 0:
         raise RuntimeError(f"git branch {flag} failed: {result.stderr}")
+
+
+def list_branches(repo: Path) -> list[str]:
+    """List branches available to import (excludes main and worktree-checked-out branches)."""
+    _git(["fetch", "--all", "--quiet"], repo)  # ignore failure — no remote in tests
+
+    local = _git(["branch", "--format=%(refname:short)"], repo)
+    local_branches = {b.strip() for b in local.stdout.splitlines() if b.strip()}
+
+    remote = _git(["branch", "-r", "--format=%(refname:short)"], repo)
+    remote_branches = set()
+    for b in remote.stdout.splitlines():
+        b = b.strip()
+        if not b or "HEAD" in b:
+            continue
+        if b.startswith("origin/"):
+            remote_branches.add(b[len("origin/"):])
+
+    all_branches = local_branches | remote_branches
+
+    worktree_result = _git(["worktree", "list", "--porcelain"], repo)
+    in_use = set()
+    for line in worktree_result.stdout.splitlines():
+        if line.startswith("branch "):
+            in_use.add(line.split("refs/heads/", 1)[-1])
+
+    return sorted(all_branches - in_use - {"main"})
