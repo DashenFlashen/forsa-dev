@@ -40,3 +40,53 @@ def test_allocate_raises_when_range_exhausted(tmp_path):
     with pytest.raises(RuntimeError, match="No free ports"):
         with allocate_port(tmp_path, start=3000, end=3002):
             pass
+
+
+def test_allocate_ports_returns_one_port_per_range(tmp_path):
+    from forsa_dev.ports import allocate_ports
+
+    with allocate_ports(tmp_path, (3000, 3099), (7600, 7699)) as ports:
+        assert len(ports) == 2
+        assert 3000 <= ports[0] <= 3099
+        assert 7600 <= ports[1] <= 7699
+
+
+def test_allocate_ports_no_double_allocation_within_call(tmp_path):
+    """Two ports from the same range cannot collide within one call."""
+    from forsa_dev.ports import allocate_ports
+
+    with allocate_ports(tmp_path, (3000, 3000), (3001, 3001)) as ports:
+        assert ports[0] != ports[1]
+
+
+def test_allocate_port_still_works_after_refactor(tmp_path):
+    """Existing single-port API must be unchanged."""
+    with allocate_port(tmp_path, 3000, 3099) as port:
+        assert 3000 <= port <= 3099
+
+
+def test_allocate_port_skips_used_ttyd_port(tmp_path):
+    """allocate_port must not return a port already used as ttyd_port."""
+    import getpass
+    from datetime import datetime, timezone
+
+    from forsa_dev.state import Environment, save_state
+
+    env = Environment(
+        name="x",
+        user=getpass.getuser(),
+        branch="x",
+        worktree=tmp_path / "w",
+        tmux_session="u-x",
+        compose_file=tmp_path / "c.yml",
+        port=3001,
+        url=None,
+        created_at=datetime(2026, 3, 8, tzinfo=timezone.utc),
+        served_at=None,
+        ttyd_port=3000,
+        ttyd_pid=None,
+    )
+    save_state(env, tmp_path)
+    with allocate_port(tmp_path, 3000, 3099) as port:
+        assert port != 3000  # taken by ttyd_port
+        assert port != 3001  # taken by port
