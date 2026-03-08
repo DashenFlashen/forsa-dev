@@ -106,7 +106,7 @@ def up_env(
         git.delete_branch(cfg.repo, name, force=True)
         raise
 
-    command = f"claude --resume {name} || bash" if with_claude else None
+    command = f"zsh -i -c 'claude --resume {name} || exec zsh'" if with_claude else None
     try:
         tmux.create_session(full_name, worktree, command=command)
     except RuntimeError:

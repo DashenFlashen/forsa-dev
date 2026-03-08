@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import getpass
 from pathlib import Path
 from typing import Any
 
 import psutil
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from forsa_dev import tmux, ttyd
 from forsa_dev.config import Config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
-from forsa_dev.operations import down_env, restart_env, serve_env, stop_env, up_env
-from forsa_dev.state import list_states
+from forsa_dev.operations import compose_cmd, down_env, restart_env, serve_env, stop_env, up_env
+from forsa_dev.state import list_states, load_state
 
 
 class CreateEnvRequest(BaseModel):
@@ -124,6 +126,31 @@ def create_app(cfg: Config) -> FastAPI:
         except RuntimeError as e:
             raise HTTPException(status_code=409, detail=str(e))
         return {"status": "ok"}
+
+    @app.get("/api/environments/{name}/logs")
+    async def stream_logs(name: str) -> StreamingResponse:
+        user = getpass.getuser()
+        try:
+            env = load_state(user, name, cfg.state_dir)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+
+        cmd = compose_cmd(env, "logs", "-f", "--tail=100")
+
+        async def generate():
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            try:
+                async for line in proc.stdout:
+                    yield f"data: {line.decode(errors='replace').rstrip()}\n\n"
+            finally:
+                proc.kill()
+                await proc.wait()
+
+        return StreamingResponse(generate(), media_type="text/event-stream")
 
     # Serve built React app — mounted last so API routes take precedence
     static_dir = Path(__file__).parent / "static"
