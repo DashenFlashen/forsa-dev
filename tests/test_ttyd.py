@@ -41,3 +41,9 @@ def test_ttyd_is_alive_returns_true_for_live_process():
 def test_ttyd_is_alive_returns_false_for_dead_process():
     with patch("os.kill", side_effect=ProcessLookupError):
         assert ttyd_is_alive(42) is False
+
+
+def test_ttyd_is_alive_returns_true_for_unowned_process():
+    """PermissionError means the process exists but we can't signal it — still alive."""
+    with patch("os.kill", side_effect=PermissionError):
+        assert ttyd_is_alive(42) is True

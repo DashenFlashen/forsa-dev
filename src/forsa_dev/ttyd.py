@@ -26,5 +26,7 @@ def ttyd_is_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
         return True
+    except PermissionError:
+        return True  # process exists but we can't signal it
     except ProcessLookupError:
         return False
