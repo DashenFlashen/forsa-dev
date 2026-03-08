@@ -7,12 +7,18 @@ from typing import Any
 import psutil
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
-from forsa_dev import tmux
+from forsa_dev import tmux, ttyd
 from forsa_dev.config import Config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
-from forsa_dev.operations import restart_env, serve_env, stop_env
+from forsa_dev.operations import down_env, restart_env, serve_env, stop_env, up_env
 from forsa_dev.state import list_states
+
+
+class CreateEnvRequest(BaseModel):
+    name: str
+    from_branch: str = "main"
 
 
 def create_app(cfg: Config) -> FastAPI:
@@ -28,15 +34,21 @@ def create_app(cfg: Config) -> FastAPI:
             status = check_status(
                 tmux_status=tmux_stat, served=env.url is not None, port_open=port_open
             )
+            ttyd_alive = ttyd.ttyd_is_alive(env.ttyd_pid) if env.ttyd_pid is not None else False
             result.append({
                 "name": env.name,
                 "user": env.user,
                 "branch": env.branch,
                 "port": env.port,
+                "ttyd_port": env.ttyd_port,
                 "url": env.url or f"http://{cfg.base_url}:{env.port}",
                 "created_at": env.created_at.isoformat(),
                 "served_at": env.served_at.isoformat() if env.served_at else None,
-                "status": {"tmux": status.tmux, "server": status.server},
+                "status": {
+                    "tmux": status.tmux,
+                    "server": status.server,
+                    "ttyd": "alive" if ttyd_alive else "dead",
+                },
                 "uptime": format_uptime(env.served_at),
             })
         return result
@@ -82,6 +94,28 @@ def create_app(cfg: Config) -> FastAPI:
             restart_env(cfg, user, name)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        return {"status": "ok"}
+
+    @app.post("/api/environments")
+    def post_create_environment(body: CreateEnvRequest) -> dict[str, Any]:
+        user = getpass.getuser()
+        try:
+            env = up_env(cfg, user, body.name, from_branch=body.from_branch, with_claude=True)
+        except ValueError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        return {"name": env.name, "port": env.port, "ttyd_port": env.ttyd_port}
+
+    @app.delete("/api/environments/{name}")
+    def delete_environment(name: str, force: bool = False) -> dict[str, str]:
+        user = getpass.getuser()
+        try:
+            down_env(cfg, user, name, force=force)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        except RuntimeError as e:
+            raise HTTPException(status_code=409, detail=str(e))
         return {"status": "ok"}
 
     # Serve built React app — mounted last so API routes take precedence

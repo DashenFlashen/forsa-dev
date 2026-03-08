@@ -50,8 +50,10 @@ def cfg_and_env(tmp_path):
 def test_get_environments_returns_list(cfg_and_env):
     cfg, _ = cfg_and_env
     with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
-         patch("forsa_dev.dashboard.server.port_is_open", return_value=False):
+         patch("forsa_dev.dashboard.server.port_is_open", return_value=False), \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd:
         mock_tmux.session_status.return_value = "active"
+        mock_ttyd.ttyd_is_alive.return_value = False
         app = create_app(cfg)
         client = TestClient(app)
         response = client.get("/api/environments")
@@ -164,3 +166,89 @@ def test_post_restart_404_when_not_found(cfg_and_env):
     with patch("forsa_dev.dashboard.server.restart_env", side_effect=FileNotFoundError()):
         response = client.post("/api/environments/nonexistent/restart")
     assert response.status_code == 404
+
+
+def test_get_environments_includes_ttyd_port(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.port_is_open", return_value=False), \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd:
+        mock_tmux.session_status.return_value = "active"
+        mock_ttyd.ttyd_is_alive.return_value = False
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.get("/api/environments")
+    assert response.status_code == 200
+    data = response.json()
+    assert "ttyd_port" in data[0]
+    assert "ttyd" in data[0]["status"]
+
+
+def test_post_create_environment_calls_up_env(cfg_and_env):
+    cfg, _ = cfg_and_env
+    mock_env = MagicMock()
+    mock_env.name = "new-env"
+    mock_env.port = 3003
+    mock_env.ttyd_port = 7603
+    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up:
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.post("/api/environments", json={"name": "new-env", "from_branch": "main"})
+    assert response.status_code == 200
+    mock_up.assert_called_once_with(cfg, USER, "new-env", from_branch="main", with_claude=True)
+
+
+def test_post_create_environment_409_if_exists(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.dashboard.server.up_env", side_effect=ValueError("already exists")):
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.post("/api/environments", json={"name": "ticket-42", "from_branch": "main"})
+    assert response.status_code == 409
+
+
+def test_post_create_environment_500_on_runtime_error(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.dashboard.server.up_env", side_effect=RuntimeError("git failed")):
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.post("/api/environments", json={"name": "new", "from_branch": "main"})
+    assert response.status_code == 500
+
+
+def test_delete_environment_calls_down_env(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.dashboard.server.down_env") as mock_down:
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.delete("/api/environments/ticket-42")
+    assert response.status_code == 200
+    mock_down.assert_called_once_with(cfg, USER, "ticket-42", force=False)
+
+
+def test_delete_environment_force_param(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.dashboard.server.down_env") as mock_down:
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.delete("/api/environments/ticket-42?force=true")
+    assert response.status_code == 200
+    mock_down.assert_called_once_with(cfg, USER, "ticket-42", force=True)
+
+
+def test_delete_environment_404_when_not_found(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.dashboard.server.down_env", side_effect=FileNotFoundError()):
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.delete("/api/environments/nonexistent")
+    assert response.status_code == 404
+
+
+def test_delete_environment_409_on_unpushed_branch(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.dashboard.server.down_env", side_effect=RuntimeError("not been pushed")):
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.delete("/api/environments/ticket-42")
+    assert response.status_code == 409
