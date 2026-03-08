@@ -126,10 +126,9 @@ def test_up_env_with_claude_passes_command_to_tmux(up_cfg):
     with patch("forsa_dev.operations.tmux.create_session") as mock_create, \
          patch("forsa_dev.operations.ttyd.start_ttyd", return_value=99):
         up_env(cfg, USER, "new-feature", with_claude=True)
-    _, kwargs = mock_create.call_args
-    cmd = kwargs.get("command") or mock_create.call_args[0][2]
-    assert "claude" in cmd
-    assert "bash" in cmd
+    assert mock_create.call_args.kwargs["command"] is not None
+    assert "claude" in mock_create.call_args.kwargs["command"]
+    assert "bash" in mock_create.call_args.kwargs["command"]
 
 
 def test_up_env_raises_if_already_exists(cfg_and_env):
@@ -163,3 +162,18 @@ def test_down_env_raises_if_branch_not_pushed(cfg_and_env):
     with patch("forsa_dev.operations.git.branch_is_pushed", return_value=False):
         with pytest.raises(RuntimeError, match="not been pushed"):
             down_env(cfg, USER, "ticket-42")
+
+
+def test_up_env_rolls_back_on_ttyd_failure(up_cfg):
+    cfg = up_cfg
+    with patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.ttyd.start_ttyd", side_effect=RuntimeError("ttyd failed")), \
+         patch("forsa_dev.operations.tmux.kill_session") as mock_kill, \
+         patch("forsa_dev.operations.git.remove_worktree"), \
+         patch("forsa_dev.operations.git.delete_branch"):
+        with pytest.raises(RuntimeError, match="ttyd failed"):
+            up_env(cfg, USER, "new-feature")
+
+    mock_kill.assert_called_once_with(f"{USER}-new-feature")
+    from forsa_dev.state import _state_path
+    assert not _state_path(USER, "new-feature", cfg.state_dir).exists()

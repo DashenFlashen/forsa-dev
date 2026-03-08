@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import subprocess
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -9,6 +10,8 @@ from forsa_dev.compose import generate_compose
 from forsa_dev.config import Config
 from forsa_dev.ports import allocate_ports
 from forsa_dev.state import Environment, delete_state, load_state, save_state
+
+logger = logging.getLogger(__name__)
 
 
 def compose_cmd(env: Environment, *args: str) -> list[str]:
@@ -98,7 +101,17 @@ def up_env(
         git.delete_branch(cfg.repo, name, force=True)
         raise
 
-    pid = ttyd.start_ttyd(ttyd_port, full_name)
+    try:
+        pid = ttyd.start_ttyd(ttyd_port, full_name)
+    except Exception:
+        try:
+            tmux.kill_session(full_name)
+        except RuntimeError:
+            pass
+        delete_state(user, name, cfg.state_dir)
+        git.remove_worktree(cfg.repo, worktree)
+        git.delete_branch(cfg.repo, name, force=True)
+        raise
     updated = replace(env, ttyd_pid=pid)
     save_state(updated, cfg.state_dir)
     return updated
@@ -124,12 +137,12 @@ def down_env(cfg: Config, user: str, name: str, force: bool = False) -> None:
 
     try:
         git.remove_worktree(cfg.repo, env.worktree)
-    except RuntimeError:
-        pass
+    except RuntimeError as e:
+        logger.warning("Could not remove worktree: %s", e)
 
     try:
         git.delete_branch(cfg.repo, env.branch, force=force)
-    except RuntimeError:
-        pass
+    except RuntimeError as e:
+        logger.warning("Could not delete branch: %s", e)
 
     delete_state(user, name, cfg.state_dir)

@@ -64,8 +64,7 @@ def test_down_force_removes_everything(setup):
         result = runner.invoke(app, ["down", "feature-x", "--force", "--config", str(cfg_file)])
     assert result.exit_code == 0, result.output
     mock_down.assert_called_once()
-    call_kwargs = mock_down.call_args[1] if mock_down.call_args[1] else {}
-    assert call_kwargs.get("force") is True or mock_down.call_args[0][-1] is True
+    assert mock_down.call_args.kwargs["force"] is True
 
 
 def test_down_not_found(setup):

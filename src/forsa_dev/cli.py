@@ -5,7 +5,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -20,12 +20,12 @@ logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 app = typer.Typer(help="Manage FORSA development environments.")
 
 ConfigOption = Annotated[
-    Optional[Path],
+    Path | None,
     typer.Option("--config", help="Path to config file.", show_default=False),
 ]
 
 
-def _load(config_path: Optional[Path]) -> Config:
+def _load(config_path: Path | None) -> Config:
     return load_config(config_path or DEFAULT_CONFIG_PATH)
 
 
@@ -193,7 +193,7 @@ def attach(
 @app.command()
 def dashboard(
     config: ConfigOption = None,
-    port: Annotated[Optional[int], typer.Option("--port", help="Override dashboard port.")] = None,
+    port: Annotated[int | None, typer.Option("--port", help="Override dashboard port.")] = None,
 ):
     """Start the web dashboard."""
     import uvicorn

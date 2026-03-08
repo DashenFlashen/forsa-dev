@@ -58,8 +58,7 @@ def test_up_creates_worktree_state_and_compose(config_file, tmp_path):
 
     assert result.exit_code == 0, result.output
     mock_up.assert_called_once()
-    _, kwargs = mock_up.call_args
-    assert kwargs.get("name") == "feature-x" or mock_up.call_args[0][2] == "feature-x"
+    assert mock_up.call_args.args[2] == "feature-x"
 
 
 def test_up_fails_if_environment_already_exists(config_file, tmp_path):
@@ -84,8 +83,4 @@ def test_up_with_claude_passes_flag(config_file, tmp_path):
             app, ["up", "feature-x", "--with-claude", "--config", str(config_file)]
         )
     assert result.exit_code == 0, result.output
-    # with_claude=True should be forwarded to up_env
-    call_kwargs = mock_up.call_args[1] if mock_up.call_args[1] else {}
-    call_args = mock_up.call_args[0]
-    # up_env(cfg, user, name, from_branch=..., with_claude=...)
-    assert call_kwargs.get("with_claude") is True or (len(call_args) > 4 and call_args[4] is True)
+    assert mock_up.call_args.kwargs["with_claude"] is True
