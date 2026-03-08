@@ -43,6 +43,8 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
 
   const branchDiffers = env.branch !== env.name
   const ttydAlive = env.status.ttyd === 'alive'
+  const ageMs = Date.now() - new Date(env.created_at).getTime()
+  const terminalReady = ttydAlive && ageMs >= 10_000
 
   return (
     <>
@@ -88,11 +90,11 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
             <ActionButtons env={env} onAction={onAction} loading={loadingAction} />
             <button
               onClick={() => onSelect(env)}
-              disabled={!ttydAlive}
-              title={ttydAlive ? 'Open terminal' : 'Terminal not available'}
+              disabled={!terminalReady}
+              title={!ttydAlive ? 'Terminal not available' : !terminalReady ? 'Terminal starting…' : 'Open terminal'}
               aria-label={`Open terminal for ${env.name}`}
               className={`rounded-md p-1.5 transition-colors ${
-                ttydAlive
+                terminalReady
                   ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
                   : 'text-gray-600 cursor-not-allowed opacity-30'
               }`}
