@@ -67,30 +67,35 @@ def up_env(
         (cfg.port_range_start, cfg.port_range_end),
         (cfg.ttyd_port_range_start, cfg.ttyd_port_range_end),
     )
-    with allocate_ports(cfg.state_dir, *ranges) as (port, ttyd_port):
-        compose_file = generate_compose(
-            worktree=worktree,
-            user=user,
-            name=name,
-            port=port,
-            data_dir=cfg.data_dir,
-            docker_image=cfg.docker_image,
-            gurobi_lic=cfg.gurobi_lic,
-        )
-        env = Environment(
-            name=name,
-            user=user,
-            branch=name,
-            worktree=worktree,
-            tmux_session=full_name,
-            compose_file=compose_file,
-            port=port,
-            url=None,
-            created_at=datetime.now(tz=timezone.utc),
-            served_at=None,
-            ttyd_port=ttyd_port,
-        )
-        save_state(env, cfg.state_dir)
+    try:
+        with allocate_ports(cfg.state_dir, *ranges) as (port, ttyd_port):
+            compose_file = generate_compose(
+                worktree=worktree,
+                user=user,
+                name=name,
+                port=port,
+                data_dir=cfg.data_dir,
+                docker_image=cfg.docker_image,
+                gurobi_lic=cfg.gurobi_lic,
+            )
+            env = Environment(
+                name=name,
+                user=user,
+                branch=name,
+                worktree=worktree,
+                tmux_session=full_name,
+                compose_file=compose_file,
+                port=port,
+                url=None,
+                created_at=datetime.now(tz=timezone.utc),
+                served_at=None,
+                ttyd_port=ttyd_port,
+            )
+            save_state(env, cfg.state_dir)
+    except Exception:
+        git.remove_worktree(cfg.repo, worktree)
+        git.delete_branch(cfg.repo, name, force=True)
+        raise
 
     command = f"claude --resume {name} || bash" if with_claude else None
     try:

@@ -47,7 +47,9 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
         port_range_start=int(data["port_range_start"]),
         port_range_end=int(data["port_range_end"]),
         dashboard_port=int(data.get("dashboard_port", _DEFAULT_DASHBOARD_PORT)),
-        ttyd_port_range_start=int(data.get("ttyd_port_range_start", _DEFAULT_TTYD_PORT_RANGE_START)),
+        ttyd_port_range_start=int(
+            data.get("ttyd_port_range_start", _DEFAULT_TTYD_PORT_RANGE_START)
+        ),
         ttyd_port_range_end=int(data.get("ttyd_port_range_end", _DEFAULT_TTYD_PORT_RANGE_END)),
     )
 

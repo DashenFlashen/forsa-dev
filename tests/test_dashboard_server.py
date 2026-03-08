@@ -198,12 +198,29 @@ def test_post_create_environment_calls_up_env(cfg_and_env):
     mock_up.assert_called_once_with(cfg, USER, "new-env", from_branch="main", with_claude=True)
 
 
+def test_post_create_environment_respects_with_claude_false(cfg_and_env):
+    cfg, _ = cfg_and_env
+    mock_env = MagicMock()
+    mock_env.name = "new-env"
+    mock_env.port = 3003
+    mock_env.ttyd_port = 7603
+    payload = {"name": "new-env", "from_branch": "main", "with_claude": False}
+    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up:
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.post("/api/environments", json=payload)
+    assert response.status_code == 200
+    mock_up.assert_called_once_with(cfg, USER, "new-env", from_branch="main", with_claude=False)
+
+
 def test_post_create_environment_409_if_exists(cfg_and_env):
     cfg, _ = cfg_and_env
     with patch("forsa_dev.dashboard.server.up_env", side_effect=ValueError("already exists")):
         app = create_app(cfg)
         client = TestClient(app)
-        response = client.post("/api/environments", json={"name": "ticket-42", "from_branch": "main"})
+        response = client.post(
+            "/api/environments", json={"name": "ticket-42", "from_branch": "main"}
+        )
     assert response.status_code == 409
 
 

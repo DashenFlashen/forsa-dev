@@ -1,7 +1,7 @@
 import getpass
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -175,5 +175,19 @@ def test_up_env_rolls_back_on_ttyd_failure(up_cfg):
             up_env(cfg, USER, "new-feature")
 
     mock_kill.assert_called_once_with(f"{USER}-new-feature")
+    from forsa_dev.state import _state_path
+    assert not _state_path(USER, "new-feature", cfg.state_dir).exists()
+
+
+def test_up_env_rolls_back_on_port_allocation_failure(up_cfg):
+    cfg = up_cfg
+    with patch("forsa_dev.operations.allocate_ports", side_effect=RuntimeError("No free ports")), \
+         patch("forsa_dev.operations.git.remove_worktree") as mock_remove, \
+         patch("forsa_dev.operations.git.delete_branch") as mock_delete:
+        with pytest.raises(RuntimeError, match="No free ports"):
+            up_env(cfg, USER, "new-feature")
+
+    mock_remove.assert_called_once()
+    mock_delete.assert_called_once()
     from forsa_dev.state import _state_path
     assert not _state_path(USER, "new-feature", cfg.state_dir).exists()

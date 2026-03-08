@@ -19,6 +19,7 @@ from forsa_dev.state import list_states
 class CreateEnvRequest(BaseModel):
     name: str
     from_branch: str = "main"
+    with_claude: bool = True
 
 
 def create_app(cfg: Config) -> FastAPI:
@@ -100,7 +101,9 @@ def create_app(cfg: Config) -> FastAPI:
     def post_create_environment(body: CreateEnvRequest) -> dict[str, Any]:
         user = getpass.getuser()
         try:
-            env = up_env(cfg, user, body.name, from_branch=body.from_branch, with_claude=True)
+            env = up_env(
+                cfg, user, body.name, from_branch=body.from_branch, with_claude=body.with_claude
+            )
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
         except RuntimeError as e:
