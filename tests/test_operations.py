@@ -262,3 +262,30 @@ def test_up_env_from_existing_branch_does_not_delete_branch_on_rollback(up_cfg, 
             up_env(cfg, USER, "keep-me", existing_branch="keep-me")
     mock_remove.assert_called_once()
     mock_delete.assert_not_called()
+
+
+def test_up_env_from_existing_branch_does_not_delete_branch_on_tmux_failure(up_cfg, git_repo):
+    cfg = up_cfg
+    subprocess.run(["git", "branch", "keep-me"], check=True, capture_output=True, cwd=git_repo)
+    tmux_exc = RuntimeError("tmux failed")
+    with patch("forsa_dev.operations.tmux.create_session", side_effect=tmux_exc), \
+         patch("forsa_dev.operations.git.remove_worktree") as mock_remove, \
+         patch("forsa_dev.operations.git.delete_branch") as mock_delete:
+        with pytest.raises(RuntimeError, match="tmux failed"):
+            up_env(cfg, USER, "keep-me", existing_branch="keep-me")
+    mock_remove.assert_called_once()
+    mock_delete.assert_not_called()
+
+
+def test_up_env_from_existing_branch_does_not_delete_branch_on_ttyd_failure(up_cfg, git_repo):
+    cfg = up_cfg
+    subprocess.run(["git", "branch", "keep-me-2"], check=True, capture_output=True, cwd=git_repo)
+    with patch("forsa_dev.operations.ttyd.start_ttyd", side_effect=RuntimeError("ttyd failed")), \
+         patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.tmux.kill_session"), \
+         patch("forsa_dev.operations.git.remove_worktree") as mock_remove, \
+         patch("forsa_dev.operations.git.delete_branch") as mock_delete:
+        with pytest.raises(RuntimeError, match="ttyd failed"):
+            up_env(cfg, USER, "keep-me-2", existing_branch="keep-me-2")
+    mock_remove.assert_called_once()
+    mock_delete.assert_not_called()
