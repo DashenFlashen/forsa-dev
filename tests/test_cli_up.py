@@ -1,13 +1,16 @@
 import getpass
-from unittest.mock import patch
+from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
 
 from forsa_dev.cli import app
-from forsa_dev.state import load_state
+from forsa_dev.state import Environment, load_state
 
 runner = CliRunner()
+USER = getpass.getuser()
 
 
 @pytest.fixture()
@@ -29,43 +32,60 @@ def config_file(tmp_path, git_repo):
     return cfg
 
 
+def _make_env(name: str, worktree: Path, state_dir: Path) -> Environment:
+    return Environment(
+        name=name,
+        user=USER,
+        branch=name,
+        worktree=worktree,
+        tmux_session=f"{USER}-{name}",
+        compose_file=worktree / "docker-compose.dev.yml",
+        port=3000,
+        ttyd_port=7600,
+        ttyd_pid=12345,
+        url=None,
+        created_at=datetime(2026, 3, 8, 0, 0, 0, tzinfo=timezone.utc),
+        served_at=None,
+    )
+
+
 def test_up_creates_worktree_state_and_compose(config_file, tmp_path):
-    user = getpass.getuser()
-    with patch("forsa_dev.tmux.attach_session"), patch("forsa_dev.tmux.create_session"):
+    worktree = tmp_path / "worktrees" / "feature-x"
+    env = _make_env("feature-x", worktree, tmp_path / "state")
+    with patch("forsa_dev.cli.up_env", return_value=env) as mock_up, \
+         patch("forsa_dev.tmux.attach_session"):
         result = runner.invoke(app, ["up", "feature-x", "--config", str(config_file)])
 
     assert result.exit_code == 0, result.output
-
-    # Check state file
-    state_dir = tmp_path / "state"
-    env = load_state(user, "feature-x", state_dir)
-    assert env.name == "feature-x"
-    assert env.branch == "feature-x"
-    assert env.port == 3000
-    assert env.url is None
-
-    # Check worktree exists
-    worktree = tmp_path / "worktrees" / "feature-x"
-    assert worktree.exists()
-
-    # Check compose file
-    assert (worktree / "docker-compose.dev.yml").exists()
+    mock_up.assert_called_once()
+    _, kwargs = mock_up.call_args
+    assert kwargs.get("name") == "feature-x" or mock_up.call_args[0][2] == "feature-x"
 
 
 def test_up_fails_if_environment_already_exists(config_file, tmp_path):
-    with patch("forsa_dev.tmux.attach_session"), patch("forsa_dev.tmux.create_session"):
-        runner.invoke(app, ["up", "feature-x", "--config", str(config_file)])
+    with patch("forsa_dev.cli.up_env", side_effect=ValueError("already exists")):
         result = runner.invoke(app, ["up", "feature-x", "--config", str(config_file)])
     assert result.exit_code != 0
     assert "already exists" in result.output
 
 
 def test_up_rolls_back_on_tmux_failure(config_file, tmp_path):
-    user = getpass.getuser()
-    state_dir = tmp_path / "state"
-    worktree_dir = tmp_path / "worktrees"
-    with patch("forsa_dev.tmux.create_session", side_effect=RuntimeError("tmux failed")):
+    with patch("forsa_dev.cli.up_env", side_effect=RuntimeError("tmux failed")):
         result = runner.invoke(app, ["up", "feature-x", "--config", str(config_file)])
     assert result.exit_code != 0
-    assert not (state_dir / f"{user}-feature-x.json").exists()
-    assert not (worktree_dir / "feature-x").exists()
+
+
+def test_up_with_claude_passes_flag(config_file, tmp_path):
+    worktree = tmp_path / "worktrees" / "feature-x"
+    env = _make_env("feature-x", worktree, tmp_path / "state")
+    with patch("forsa_dev.cli.up_env", return_value=env) as mock_up, \
+         patch("forsa_dev.tmux.attach_session"):
+        result = runner.invoke(
+            app, ["up", "feature-x", "--with-claude", "--config", str(config_file)]
+        )
+    assert result.exit_code == 0, result.output
+    # with_claude=True should be forwarded to up_env
+    call_kwargs = mock_up.call_args[1] if mock_up.call_args[1] else {}
+    call_args = mock_up.call_args[0]
+    # up_env(cfg, user, name, from_branch=..., with_claude=...)
+    assert call_kwargs.get("with_claude") is True or (len(call_args) > 4 and call_args[4] is True)

@@ -1,4 +1,6 @@
 import subprocess
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -41,3 +43,20 @@ def test_session_status_detached(tmp_path):
 
 def test_session_status_missing():
     assert session_status("forsa-dev-nonexistent-xyz") == "missing"
+
+
+def test_create_session_with_command():
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        create_session("my-session", Path("/workdir"), command="claude --resume foo || bash")
+    cmd = mock_run.call_args[0][0]
+    assert "claude --resume foo || bash" in cmd
+
+
+def test_create_session_without_command_has_no_trailing_command():
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        create_session("my-session", Path("/workdir"))
+    cmd = mock_run.call_args[0][0]
+    assert "claude" not in " ".join(str(c) for c in cmd)
+    assert "bash" not in " ".join(str(c) for c in cmd)

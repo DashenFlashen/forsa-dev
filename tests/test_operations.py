@@ -1,12 +1,12 @@
 import getpass
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from forsa_dev.config import Config
-from forsa_dev.operations import restart_env, serve_env, stop_env
+from forsa_dev.operations import down_env, restart_env, serve_env, stop_env, up_env
 from forsa_dev.state import Environment, load_state, save_state
 
 USER = getpass.getuser()
@@ -42,6 +42,8 @@ def cfg_and_env(tmp_path):
         gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
         port_range_start=3000,
         port_range_end=3099,
+        ttyd_port_range_start=7600,
+        ttyd_port_range_end=7699,
     )
     return cfg, env
 
@@ -82,3 +84,82 @@ def test_restart_env_calls_compose_restart(cfg_and_env):
     mock_run.assert_called_once()
     cmd = mock_run.call_args[0][0]
     assert "restart" in cmd
+
+
+@pytest.fixture()
+def up_cfg(tmp_path, git_repo):
+    state_dir = tmp_path / "state"
+    cfg = Config(
+        repo=git_repo,
+        worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"),
+        state_dir=state_dir,
+        base_url="optbox.example.ts.net",
+        docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000,
+        port_range_end=3099,
+        ttyd_port_range_start=7600,
+        ttyd_port_range_end=7699,
+    )
+    return cfg
+
+
+def test_up_env_creates_environment(up_cfg):
+    cfg = up_cfg
+    with patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=12345):
+        env = up_env(cfg, USER, "new-feature")
+    assert env.name == "new-feature"
+    assert env.user == USER
+    assert env.branch == "new-feature"
+    assert env.port == 3000
+    assert env.ttyd_port == 7600
+    assert env.ttyd_pid == 12345
+    # State was persisted
+    saved = load_state(USER, "new-feature", cfg.state_dir)
+    assert saved.ttyd_pid == 12345
+
+
+def test_up_env_with_claude_passes_command_to_tmux(up_cfg):
+    cfg = up_cfg
+    with patch("forsa_dev.operations.tmux.create_session") as mock_create, \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=99):
+        up_env(cfg, USER, "new-feature", with_claude=True)
+    _, kwargs = mock_create.call_args
+    cmd = kwargs.get("command") or mock_create.call_args[0][2]
+    assert "claude" in cmd
+    assert "bash" in cmd
+
+
+def test_up_env_raises_if_already_exists(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with pytest.raises(ValueError, match="already exists"):
+        up_env(cfg, USER, "ticket-42")
+
+
+def test_down_env_cleans_up(cfg_and_env, git_repo):
+    cfg, env = cfg_and_env
+    # Give the env a ttyd_pid
+    from dataclasses import replace
+    env_with_pid = replace(env, ttyd_pid=9999)
+    save_state(env_with_pid, cfg.state_dir)
+
+    with patch("forsa_dev.operations.git.branch_is_pushed", return_value=True), \
+         patch("subprocess.run", return_value=MagicMock(returncode=0)), \
+         patch("forsa_dev.operations.tmux.kill_session"), \
+         patch("forsa_dev.operations.ttyd.stop_ttyd") as mock_stop, \
+         patch("forsa_dev.operations.git.remove_worktree"), \
+         patch("forsa_dev.operations.git.delete_branch"):
+        down_env(cfg, USER, "ticket-42")
+
+    mock_stop.assert_called_once_with(9999)
+    from forsa_dev.state import _state_path
+    assert not _state_path(USER, "ticket-42", cfg.state_dir).exists()
+
+
+def test_down_env_raises_if_branch_not_pushed(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.operations.git.branch_is_pushed", return_value=False):
+        with pytest.raises(RuntimeError, match="not been pushed"):
+            down_env(cfg, USER, "ticket-42")

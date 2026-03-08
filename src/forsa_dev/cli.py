@@ -4,19 +4,16 @@ import getpass
 import logging
 import os
 import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
 
-from forsa_dev import git, tmux
-from forsa_dev.compose import generate_compose
+from forsa_dev import tmux
 from forsa_dev.config import DEFAULT_CONFIG_PATH, Config, load_config, save_config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
-from forsa_dev.operations import compose_cmd, restart_env, serve_env, stop_env
-from forsa_dev.ports import allocate_port
-from forsa_dev.state import Environment, delete_state, list_states, load_state, save_state
+from forsa_dev.operations import compose_cmd, down_env, restart_env, serve_env, stop_env, up_env
+from forsa_dev.state import list_states, load_state
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
@@ -82,70 +79,26 @@ def init(
 def up(
     name: str,
     from_branch: Annotated[str, typer.Option("--from", help="Branch to create from.")] = "main",
+    with_claude: Annotated[bool, typer.Option("--with-claude", help="Start tmux with Claude Code.")] = False,  # noqa: E501
     config: ConfigOption = None,
 ):
     """Create a git worktree, compose file, and tmux session."""
     cfg = _load(config)
     user = getpass.getuser()
     full_name = _full_name(user, name)
-    worktree = cfg.worktree_dir / name
-
-    # Guard: already exists
     try:
-        load_state(user, name, cfg.state_dir)
-        typer.echo(
-            f"Error: environment '{full_name}' already exists. Use `forsa-dev down {name}` first.",
-            err=True,
-        )
+        env = up_env(cfg, user, name, from_branch=from_branch, with_claude=with_claude)
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
-    except FileNotFoundError:
-        pass
-
-    typer.echo(f"Creating branch '{name}' from '{from_branch}'...")
-    git.create_branch_and_worktree(cfg.repo, name, worktree, from_branch)
-
-    typer.echo("Allocating port...")
-    with allocate_port(cfg.state_dir, cfg.port_range_start, cfg.port_range_end) as port:
-        typer.echo(f"Generating docker-compose.dev.yml (port {port})...")
-        compose_file = generate_compose(
-            worktree=worktree,
-            user=user,
-            name=name,
-            port=port,
-            data_dir=cfg.data_dir,
-            docker_image=cfg.docker_image,
-            gurobi_lic=cfg.gurobi_lic,
-        )
-
-        env = Environment(
-            name=name,
-            user=user,
-            branch=name,
-            worktree=worktree,
-            tmux_session=full_name,
-            compose_file=compose_file,
-            port=port,
-            url=None,
-            created_at=datetime.now(tz=timezone.utc),
-            served_at=None,
-        )
-        save_state(env, cfg.state_dir)
-
-    typer.echo(f"Starting tmux session '{full_name}'...")
-    try:
-        tmux.create_session(full_name, worktree)
     except RuntimeError as e:
-        typer.echo(f"Error: {e}. Rolling back...", err=True)
-        delete_state(user, name, cfg.state_dir)
-        git.remove_worktree(cfg.repo, worktree)
-        git.delete_branch(cfg.repo, name, force=True)
+        typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
-
     if os.environ.get("TMUX"):
         typer.echo(f"Ready. Run 'forsa-dev attach {name}' to switch to the session.")
     else:
         typer.echo(f"Ready. Attaching to '{full_name}'...")
-        tmux.attach_session(full_name)
+        tmux.attach_session(env.tmux_session)
 
 
 @app.command()
@@ -199,46 +152,17 @@ def down(
     force: Annotated[bool, typer.Option("--force", help="Skip branch-push check.")] = False,
     config: ConfigOption = None,
 ):
-    """Stop server, kill tmux, remove worktree. Checks branch is pushed first."""
+    """Stop server, kill tmux, kill ttyd, remove worktree. Checks branch is pushed first."""
     cfg = _load(config)
     user = getpass.getuser()
-    env = load_state(user, name, cfg.state_dir)
-
-    if not force and not git.branch_is_pushed(cfg.repo, env.branch):
-        typer.echo(
-            f"Error: branch '{env.branch}' has not been pushed or merged.\n"
-            "Use --force to delete anyway.",
-            err=True,
-        )
+    try:
+        down_env(cfg, user, name, force=force)
+    except FileNotFoundError:
+        typer.echo(f"Error: environment '{_full_name(user, name)}' not found.", err=True)
         raise typer.Exit(1)
-
-    typer.echo("Stopping server...")
-    # Always run docker compose down even if never served — it's idempotent and
-    # clears any containers that may have been started outside of forsa-dev.
-    subprocess.run(compose_cmd(env, "down"), check=False)
-
-    # Kill tmux
-    typer.echo("Killing tmux session...")
-    try:
-        tmux.kill_session(env.tmux_session)
-    except RuntimeError:
-        pass  # session may already be gone
-
-    # Remove worktree
-    typer.echo("Removing worktree...")
-    try:
-        git.remove_worktree(cfg.repo, env.worktree)
     except RuntimeError as e:
-        typer.echo(f"Warning: {e}", err=True)
-
-    typer.echo("Deleting branch...")
-    try:
-        git.delete_branch(cfg.repo, env.branch, force=force)
-    except RuntimeError as e:
-        typer.echo(f"Warning: {e}", err=True)
-
-    # Delete state
-    delete_state(user, name, cfg.state_dir)
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
     typer.echo(f"Environment '{_full_name(user, name)}' removed.")
 
 

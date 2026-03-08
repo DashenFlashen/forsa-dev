@@ -4,8 +4,11 @@ import subprocess
 from dataclasses import replace
 from datetime import datetime, timezone
 
+from forsa_dev import git, tmux, ttyd
+from forsa_dev.compose import generate_compose
 from forsa_dev.config import Config
-from forsa_dev.state import Environment, load_state, save_state
+from forsa_dev.ports import allocate_ports
+from forsa_dev.state import Environment, delete_state, load_state, save_state
 
 
 def compose_cmd(env: Environment, *args: str) -> list[str]:
@@ -37,3 +40,96 @@ def stop_env(cfg: Config, user: str, name: str) -> None:
 def restart_env(cfg: Config, user: str, name: str) -> None:
     env = load_state(user, name, cfg.state_dir)
     subprocess.run(compose_cmd(env, "restart"), check=False)
+
+
+def up_env(
+    cfg: Config,
+    user: str,
+    name: str,
+    from_branch: str = "main",
+    with_claude: bool = False,
+) -> Environment:
+    full_name = f"{user}-{name}"
+    worktree = cfg.worktree_dir / name
+
+    try:
+        load_state(user, name, cfg.state_dir)
+        raise ValueError(f"Environment '{full_name}' already exists.")
+    except FileNotFoundError:
+        pass
+
+    git.create_branch_and_worktree(cfg.repo, name, worktree, from_branch)
+
+    ranges = (
+        (cfg.port_range_start, cfg.port_range_end),
+        (cfg.ttyd_port_range_start, cfg.ttyd_port_range_end),
+    )
+    with allocate_ports(cfg.state_dir, *ranges) as (port, ttyd_port):
+        compose_file = generate_compose(
+            worktree=worktree,
+            user=user,
+            name=name,
+            port=port,
+            data_dir=cfg.data_dir,
+            docker_image=cfg.docker_image,
+            gurobi_lic=cfg.gurobi_lic,
+        )
+        env = Environment(
+            name=name,
+            user=user,
+            branch=name,
+            worktree=worktree,
+            tmux_session=full_name,
+            compose_file=compose_file,
+            port=port,
+            url=None,
+            created_at=datetime.now(tz=timezone.utc),
+            served_at=None,
+            ttyd_port=ttyd_port,
+        )
+        save_state(env, cfg.state_dir)
+
+    command = f"claude --resume {name} || bash" if with_claude else None
+    try:
+        tmux.create_session(full_name, worktree, command=command)
+    except RuntimeError:
+        delete_state(user, name, cfg.state_dir)
+        git.remove_worktree(cfg.repo, worktree)
+        git.delete_branch(cfg.repo, name, force=True)
+        raise
+
+    pid = ttyd.start_ttyd(ttyd_port, full_name)
+    updated = replace(env, ttyd_pid=pid)
+    save_state(updated, cfg.state_dir)
+    return updated
+
+
+def down_env(cfg: Config, user: str, name: str, force: bool = False) -> None:
+    env = load_state(user, name, cfg.state_dir)
+
+    if not force and not git.branch_is_pushed(cfg.repo, env.branch):
+        raise RuntimeError(
+            f"Branch '{env.branch}' has not been pushed or merged. Use force=True to delete anyway."
+        )
+
+    subprocess.run(compose_cmd(env, "down"), check=False)
+
+    try:
+        tmux.kill_session(env.tmux_session)
+    except RuntimeError:
+        pass
+
+    if env.ttyd_pid is not None:
+        ttyd.stop_ttyd(env.ttyd_pid)
+
+    try:
+        git.remove_worktree(cfg.repo, env.worktree)
+    except RuntimeError:
+        pass
+
+    try:
+        git.delete_branch(cfg.repo, env.branch, force=force)
+    except RuntimeError:
+        pass
+
+    delete_state(user, name, cfg.state_dir)

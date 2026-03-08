@@ -5,13 +5,12 @@ import subprocess
 from pathlib import Path
 
 
-def create_session(session: str, cwd: Path) -> None:
+def create_session(session: str, cwd: Path, command: str | None = None) -> None:
     """Create a detached tmux session. Raises RuntimeError if it fails."""
-    result = subprocess.run(
-        ["tmux", "new-session", "-d", "-s", session, "-c", str(cwd)],
-        capture_output=True,
-        text=True,
-    )
+    cmd = ["tmux", "new-session", "-d", "-s", session, "-c", str(cwd)]
+    if command:
+        cmd.append(command)
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"tmux new-session failed: {result.stderr}")
 
