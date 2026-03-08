@@ -4,7 +4,7 @@ from pathlib import Path
 
 _STARTUP_CMD = (
     "cd /app/src/python/webserver"
-    " && pip install --no-deps --no-build-isolation --break-system-packages -e ."
+    " && pip install --no-deps --break-system-packages -e ."
     " && python3 -m forsa.main"
 )
 
