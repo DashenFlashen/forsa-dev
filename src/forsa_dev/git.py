@@ -60,6 +60,14 @@ def delete_branch(repo: Path, branch: str, force: bool = False) -> None:
         raise RuntimeError(f"git branch {flag} failed: {result.stderr}")
 
 
+def create_worktree_from_branch(repo: Path, branch: str, worktree: Path) -> None:
+    """Check out an existing branch as a worktree (does not create a new branch)."""
+    worktree.parent.mkdir(parents=True, exist_ok=True)
+    result = _git(["worktree", "add", str(worktree), branch], repo)
+    if result.returncode != 0:
+        raise RuntimeError(f"git worktree add failed: {result.stderr}")
+
+
 def list_branches(repo: Path) -> list[str]:
     """List branches available to import (excludes main and worktree-checked-out branches)."""
     _git(["fetch", "--all", "--quiet"], repo)  # ignore failure — no remote in tests

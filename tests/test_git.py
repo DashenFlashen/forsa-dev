@@ -5,6 +5,7 @@ import pytest
 from forsa_dev.git import (
     branch_is_pushed,
     create_branch_and_worktree,
+    create_worktree_from_branch,
     delete_branch,
     list_branches,
     remove_worktree,
@@ -93,3 +94,21 @@ def test_list_branches_excludes_worktree_branches(git_repo, tmp_path):
     branches = list_branches(git_repo)
     assert "in-use" not in branches
     assert "available" in branches
+
+
+def test_create_worktree_from_branch(git_repo, tmp_path):
+    subprocess.run(["git", "branch", "existing"], check=True, capture_output=True, cwd=git_repo)
+    wt = tmp_path / "worktrees" / "existing"
+    create_worktree_from_branch(repo=git_repo, branch="existing", worktree=wt)
+    assert wt.exists()
+    result = subprocess.run(
+        ["git", "branch", "--show-current"],
+        capture_output=True, text=True, cwd=wt,
+    )
+    assert result.stdout.strip() == "existing"
+
+
+def test_create_worktree_from_branch_fails_for_missing_branch(git_repo, tmp_path):
+    wt = tmp_path / "worktrees" / "no-such"
+    with pytest.raises(RuntimeError, match="git worktree add failed"):
+        create_worktree_from_branch(repo=git_repo, branch="no-such-branch", worktree=wt)
