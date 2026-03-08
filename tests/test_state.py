@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -83,7 +84,6 @@ def test_state_with_url_roundtrips(tmp_path):
 
 def test_deserialize_state_without_ttyd_fields(tmp_path):
     """State files written before ttyd support must still load."""
-    import json
     state_dir = tmp_path / "state"
     state_dir.mkdir()
     old_data = {
