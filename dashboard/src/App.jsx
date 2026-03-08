@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import CreateEnvironment from './components/CreateEnvironment'
 import EnvironmentTable from './components/EnvironmentTable'
 import ErrorBanner from './components/ErrorBanner'
@@ -43,7 +43,7 @@ export default function App() {
   }, [])
 
   // Initial fetch on mount
-  useState(() => { fetchEnvs(); fetchHealth() })
+  useEffect(() => { fetchEnvs(); fetchHealth() }, [fetchEnvs, fetchHealth])
 
   useInterval(fetchEnvs, ENV_POLL_MS)
   useInterval(fetchHealth, HEALTH_POLL_MS)
