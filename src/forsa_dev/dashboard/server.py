@@ -86,6 +86,8 @@ def create_app(cfg: Config) -> FastAPI:
             stop_env(cfg, user, name)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
         return {"status": "ok"}
 
     @app.post("/api/environments/{name}/restart")
@@ -95,6 +97,8 @@ def create_app(cfg: Config) -> FastAPI:
             restart_env(cfg, user, name)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
         return {"status": "ok"}
 
     @app.post("/api/environments")

@@ -17,6 +17,7 @@ export default function TerminalView({ env, host, onClose }) {
           src={src}
           className="flex-1 w-full border-0"
           title={`Terminal: ${env.name}`}
+          sandbox="allow-scripts allow-same-origin"
         />
       ) : (
         <div className="flex flex-1 items-center justify-center text-gray-500">

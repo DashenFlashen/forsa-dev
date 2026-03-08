@@ -191,3 +191,31 @@ def test_up_env_rolls_back_on_port_allocation_failure(up_cfg):
     mock_delete.assert_called_once()
     from forsa_dev.state import _state_path
     assert not _state_path(USER, "new-feature", cfg.state_dir).exists()
+
+
+def test_up_env_rolls_back_on_tmux_failure(up_cfg):
+    cfg = up_cfg
+    tmux_exc = RuntimeError("tmux failed")
+    with patch("forsa_dev.operations.tmux.create_session", side_effect=tmux_exc), \
+         patch("forsa_dev.operations.git.remove_worktree") as mock_remove, \
+         patch("forsa_dev.operations.git.delete_branch") as mock_delete:
+        with pytest.raises(RuntimeError, match="tmux failed"):
+            up_env(cfg, USER, "new-feature")
+
+    mock_remove.assert_called_once()
+    mock_delete.assert_called_once()
+    from forsa_dev.state import _state_path
+    assert not _state_path(USER, "new-feature", cfg.state_dir).exists()
+
+
+def test_compose_cmd_format(cfg_and_env):
+    from forsa_dev.operations import compose_cmd
+    cfg, env = cfg_and_env
+    cmd = compose_cmd(env, "up", "-d")
+    assert cmd[0:2] == ["docker", "compose"]
+    assert "-p" in cmd
+    assert f"{USER}-ticket-42" in cmd
+    assert "-f" in cmd
+    assert str(env.compose_file) in cmd
+    assert "up" in cmd
+    assert "-d" in cmd

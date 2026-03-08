@@ -43,6 +43,8 @@ def cfg_and_env(tmp_path):
         gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
         port_range_start=3000,
         port_range_end=3099,
+        ttyd_port_range_start=7600,
+        ttyd_port_range_end=7699,
     )
     return cfg, env
 
@@ -149,6 +151,15 @@ def test_post_stop_404_when_not_found(cfg_and_env):
     assert response.status_code == 404
 
 
+def test_post_stop_500_on_runtime_error(cfg_and_env):
+    cfg, _ = cfg_and_env
+    app = create_app(cfg)
+    client = TestClient(app)
+    with patch("forsa_dev.dashboard.server.stop_env", side_effect=RuntimeError("compose failed")):
+        response = client.post("/api/environments/ticket-42/stop")
+    assert response.status_code == 500
+
+
 def test_post_restart_calls_restart_env(cfg_and_env):
     cfg, _ = cfg_and_env
     app = create_app(cfg)
@@ -166,6 +177,17 @@ def test_post_restart_404_when_not_found(cfg_and_env):
     with patch("forsa_dev.dashboard.server.restart_env", side_effect=FileNotFoundError()):
         response = client.post("/api/environments/nonexistent/restart")
     assert response.status_code == 404
+
+
+def test_post_restart_500_on_runtime_error(cfg_and_env):
+    cfg, _ = cfg_and_env
+    app = create_app(cfg)
+    client = TestClient(app)
+    with patch(
+        "forsa_dev.dashboard.server.restart_env", side_effect=RuntimeError("compose failed")
+    ):
+        response = client.post("/api/environments/ticket-42/restart")
+    assert response.status_code == 500
 
 
 def test_get_environments_includes_ttyd_port(cfg_and_env):
