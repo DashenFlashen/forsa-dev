@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import subprocess
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -12,6 +13,8 @@ from forsa_dev.ports import allocate_ports
 from forsa_dev.state import Environment, delete_state, load_state, save_state
 
 logger = logging.getLogger(__name__)
+
+_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 
 
 def compose_cmd(env: Environment, *args: str) -> list[str]:
@@ -52,6 +55,12 @@ def up_env(
     from_branch: str = "main",
     with_claude: bool = False,
 ) -> Environment:
+    if not _NAME_RE.match(name):
+        raise ValueError(
+            f"Invalid environment name '{name}': must start with a letter or digit "
+            "and contain only lowercase letters, digits, hyphens, and underscores."
+        )
+
     full_name = f"{user}-{name}"
     worktree = cfg.worktree_dir / name
 

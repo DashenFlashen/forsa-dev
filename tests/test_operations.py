@@ -137,6 +137,15 @@ def test_up_env_raises_if_already_exists(cfg_and_env):
         up_env(cfg, USER, "ticket-42")
 
 
+@pytest.mark.parametrize("bad_name", [
+    "Testing", "Ticket-42", "UPPER", "ticket 42", "ticket.42", "-ticket",
+])
+def test_up_env_rejects_invalid_name(up_cfg, bad_name):
+    cfg = up_cfg
+    with pytest.raises(ValueError, match="Invalid environment name"):
+        up_env(cfg, USER, bad_name)
+
+
 def test_down_env_cleans_up(cfg_and_env, git_repo):
     cfg, env = cfg_and_env
     # Give the env a ttyd_pid
