@@ -125,7 +125,7 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
       {confirmDelete === 'force' && (
         <ConfirmModal
           title="Branch not pushed — force delete?"
-          message={`Branch '${env.name}' has unpushed commits. Force delete will permanently discard them.`}
+          message={`Branch '${env.branch}' has unpushed commits. Force delete will permanently discard them.`}
           confirmLabel="Force delete"
           danger
           onConfirm={handleConfirmDelete}
