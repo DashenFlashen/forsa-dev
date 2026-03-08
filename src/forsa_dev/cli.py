@@ -57,6 +57,8 @@ def init(
     port_start = typer.prompt("Port range start", default=3000)
     port_end = typer.prompt("Port range end", default=3099)
     dashboard_port = typer.prompt("Dashboard port", default=8080)
+    ttyd_port_start = typer.prompt("ttyd port range start", default=7600)
+    ttyd_port_end = typer.prompt("ttyd port range end", default=7699)
 
     cfg = Config(
         repo=Path(repo),
@@ -69,6 +71,8 @@ def init(
         port_range_start=int(port_start),
         port_range_end=int(port_end),
         dashboard_port=int(dashboard_port),
+        ttyd_port_range_start=int(ttyd_port_start),
+        ttyd_port_range_end=int(ttyd_port_end),
     )
     save_config(cfg, config_path)
     typer.echo(f"Config written to {config_path}")

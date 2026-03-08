@@ -23,6 +23,8 @@ def test_init_writes_config(tmp_path):
         "3000",
         "3099",
         "8080",
+        "7600",
+        "7699",
     ]) + "\n"
 
     result = runner.invoke(app, ["init", "--config", str(config_path)], input=inputs)
