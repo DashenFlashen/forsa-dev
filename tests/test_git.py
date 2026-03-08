@@ -79,7 +79,9 @@ def test_delete_branch_force(git_repo, tmp_path):
 
 def test_list_branches_returns_available_branches(git_repo, tmp_path):
     subprocess.run(["git", "branch", "old-work"], check=True, capture_output=True, cwd=git_repo)
-    subprocess.run(["git", "branch", "feature/cool-thing"], check=True, capture_output=True, cwd=git_repo)
+    subprocess.run(
+        ["git", "branch", "feature/cool-thing"], check=True, capture_output=True, cwd=git_repo
+    )
     branches = list_branches(git_repo)
     assert "old-work" in branches
     assert "feature/cool-thing" in branches
@@ -90,7 +92,9 @@ def test_list_branches_excludes_worktree_branches(git_repo, tmp_path):
     subprocess.run(["git", "branch", "in-use"], check=True, capture_output=True, cwd=git_repo)
     subprocess.run(["git", "branch", "available"], check=True, capture_output=True, cwd=git_repo)
     wt = tmp_path / "wt"
-    subprocess.run(["git", "worktree", "add", str(wt), "in-use"], check=True, capture_output=True, cwd=git_repo)
+    subprocess.run(
+        ["git", "worktree", "add", str(wt), "in-use"], check=True, capture_output=True, cwd=git_repo
+    )
     branches = list_branches(git_repo)
     assert "in-use" not in branches
     assert "available" in branches
@@ -112,3 +116,4 @@ def test_create_worktree_from_branch_fails_for_missing_branch(git_repo, tmp_path
     wt = tmp_path / "worktrees" / "no-such"
     with pytest.raises(RuntimeError, match="git worktree add failed"):
         create_worktree_from_branch(repo=git_repo, branch="no-such-branch", worktree=wt)
+    assert not wt.exists()
