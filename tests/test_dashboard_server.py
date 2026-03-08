@@ -218,7 +218,8 @@ def test_post_create_environment_calls_up_env(cfg_and_env):
         response = client.post("/api/environments", json={"name": "new-env", "from_branch": "main"})
     assert response.status_code == 200
     mock_up.assert_called_once_with(
-        cfg, USER, "new-env", from_branch="main", with_claude=True, data_dir=None
+        cfg, USER, "new-env", from_branch="main", with_claude=True, data_dir=None,
+        existing_branch=None,
     )
 
 
@@ -235,7 +236,8 @@ def test_post_create_environment_respects_with_claude_false(cfg_and_env):
         response = client.post("/api/environments", json=payload)
     assert response.status_code == 200
     mock_up.assert_called_once_with(
-        cfg, USER, "new-env", from_branch="main", with_claude=False, data_dir=None
+        cfg, USER, "new-env", from_branch="main", with_claude=False, data_dir=None,
+        existing_branch=None,
     )
 
 
@@ -307,6 +309,18 @@ def test_get_branches_returns_list(cfg_and_env):
         response = client.get("/api/branches")
     assert response.status_code == 200
     assert response.json() == {"branches": ["feature-a", "feature-b"]}
+
+
+def test_get_branches_500_on_runtime_error(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch(
+        "forsa_dev.dashboard.server.git.list_branches",
+        side_effect=RuntimeError("git failed"),
+    ):
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.get("/api/branches")
+    assert response.status_code == 500
 
 
 def test_post_create_environment_with_existing_branch(cfg_and_env):

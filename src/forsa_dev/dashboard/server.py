@@ -121,15 +121,14 @@ def create_app(cfg: Config) -> FastAPI:
     def post_create_environment(body: CreateEnvRequest) -> dict[str, Any]:
         user = getpass.getuser()
         data_dir = Path(body.data_dir) if body.data_dir else None
-        kwargs: dict[str, Any] = {
-            "from_branch": body.from_branch,
-            "with_claude": body.with_claude,
-            "data_dir": data_dir,
-        }
-        if body.existing_branch:
-            kwargs["existing_branch"] = body.existing_branch
         try:
-            env = up_env(cfg, user, body.name, **kwargs)
+            env = up_env(
+                cfg, user, body.name,
+                from_branch=body.from_branch,
+                with_claude=body.with_claude,
+                data_dir=data_dir,
+                existing_branch=body.existing_branch,
+            )
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
         except RuntimeError as e:
