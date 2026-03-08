@@ -1,4 +1,5 @@
 import getpass
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -239,3 +240,25 @@ def test_compose_cmd_format(cfg_and_env):
     assert str(env.compose_file) in cmd
     assert "up" in cmd
     assert "-d" in cmd
+
+
+def test_up_env_from_existing_branch(up_cfg, git_repo):
+    cfg = up_cfg
+    subprocess.run(["git", "branch", "my-feature"], check=True, capture_output=True, cwd=git_repo)
+    with patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=1):
+        env = up_env(cfg, USER, "my-feature", existing_branch="my-feature")
+    assert env.name == "my-feature"
+    assert env.branch == "my-feature"
+
+
+def test_up_env_from_existing_branch_does_not_delete_branch_on_rollback(up_cfg, git_repo):
+    cfg = up_cfg
+    subprocess.run(["git", "branch", "keep-me"], check=True, capture_output=True, cwd=git_repo)
+    with patch("forsa_dev.operations.allocate_ports", side_effect=RuntimeError("no ports")), \
+         patch("forsa_dev.operations.git.remove_worktree") as mock_remove, \
+         patch("forsa_dev.operations.git.delete_branch") as mock_delete:
+        with pytest.raises(RuntimeError):
+            up_env(cfg, USER, "keep-me", existing_branch="keep-me")
+    mock_remove.assert_called_once()
+    mock_delete.assert_not_called()

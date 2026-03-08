@@ -56,6 +56,7 @@ def up_env(
     from_branch: str = "main",
     with_claude: bool = False,
     data_dir: Path | None = None,
+    existing_branch: str | None = None,
 ) -> Environment:
     if not _NAME_RE.match(name):
         raise ValueError(
@@ -72,7 +73,12 @@ def up_env(
     except FileNotFoundError:
         pass
 
-    git.create_branch_and_worktree(cfg.repo, name, worktree, from_branch)
+    if existing_branch:
+        git.create_worktree_from_branch(cfg.repo, existing_branch, worktree)
+        branch = existing_branch
+    else:
+        git.create_branch_and_worktree(cfg.repo, name, worktree, from_branch)
+        branch = name
 
     ranges = (
         (cfg.port_range_start, cfg.port_range_end),
@@ -92,7 +98,7 @@ def up_env(
             env = Environment(
                 name=name,
                 user=user,
-                branch=name,
+                branch=branch,
                 worktree=worktree,
                 tmux_session=full_name,
                 compose_file=compose_file,
@@ -105,7 +111,8 @@ def up_env(
             save_state(env, cfg.state_dir)
     except Exception:
         git.remove_worktree(cfg.repo, worktree)
-        git.delete_branch(cfg.repo, name, force=True)
+        if not existing_branch:
+            git.delete_branch(cfg.repo, name, force=True)
         raise
 
     command = (
@@ -116,7 +123,8 @@ def up_env(
     except RuntimeError:
         delete_state(user, name, cfg.state_dir)
         git.remove_worktree(cfg.repo, worktree)
-        git.delete_branch(cfg.repo, name, force=True)
+        if not existing_branch:
+            git.delete_branch(cfg.repo, name, force=True)
         raise
 
     try:
@@ -128,7 +136,8 @@ def up_env(
             pass
         delete_state(user, name, cfg.state_dir)
         git.remove_worktree(cfg.repo, worktree)
-        git.delete_branch(cfg.repo, name, force=True)
+        if not existing_branch:
+            git.delete_branch(cfg.repo, name, force=True)
         raise
     updated = replace(env, ttyd_pid=pid)
     save_state(updated, cfg.state_dir)
