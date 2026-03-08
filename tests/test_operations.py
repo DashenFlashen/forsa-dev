@@ -250,6 +250,9 @@ def test_up_env_from_existing_branch(up_cfg, git_repo):
         env = up_env(cfg, USER, "my-feature", existing_branch="my-feature")
     assert env.name == "my-feature"
     assert env.branch == "my-feature"
+    assert (cfg.worktree_dir / "my-feature").is_dir()
+    saved = load_state(USER, "my-feature", cfg.state_dir)
+    assert saved.branch == "my-feature"
 
 
 def test_up_env_from_existing_branch_does_not_delete_branch_on_rollback(up_cfg, git_repo):
@@ -258,7 +261,7 @@ def test_up_env_from_existing_branch_does_not_delete_branch_on_rollback(up_cfg, 
     with patch("forsa_dev.operations.allocate_ports", side_effect=RuntimeError("no ports")), \
          patch("forsa_dev.operations.git.remove_worktree") as mock_remove, \
          patch("forsa_dev.operations.git.delete_branch") as mock_delete:
-        with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError, match="no ports"):
             up_env(cfg, USER, "keep-me", existing_branch="keep-me")
     mock_remove.assert_called_once()
     mock_delete.assert_not_called()
@@ -279,13 +282,13 @@ def test_up_env_from_existing_branch_does_not_delete_branch_on_tmux_failure(up_c
 
 def test_up_env_from_existing_branch_does_not_delete_branch_on_ttyd_failure(up_cfg, git_repo):
     cfg = up_cfg
-    subprocess.run(["git", "branch", "keep-me-2"], check=True, capture_output=True, cwd=git_repo)
+    subprocess.run(["git", "branch", "keep-me"], check=True, capture_output=True, cwd=git_repo)
     with patch("forsa_dev.operations.ttyd.start_ttyd", side_effect=RuntimeError("ttyd failed")), \
          patch("forsa_dev.operations.tmux.create_session"), \
          patch("forsa_dev.operations.tmux.kill_session"), \
          patch("forsa_dev.operations.git.remove_worktree") as mock_remove, \
          patch("forsa_dev.operations.git.delete_branch") as mock_delete:
         with pytest.raises(RuntimeError, match="ttyd failed"):
-            up_env(cfg, USER, "keep-me-2", existing_branch="keep-me-2")
+            up_env(cfg, USER, "keep-me", existing_branch="keep-me")
     mock_remove.assert_called_once()
     mock_delete.assert_not_called()
