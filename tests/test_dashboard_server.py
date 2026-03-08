@@ -295,3 +295,36 @@ def test_delete_environment_409_on_unpushed_branch(cfg_and_env):
         client = TestClient(app)
         response = client.delete("/api/environments/ticket-42")
     assert response.status_code == 409
+
+
+def test_get_branches_returns_list(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch(
+        "forsa_dev.dashboard.server.git.list_branches", return_value=["feature-a", "feature-b"]
+    ):
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.get("/api/branches")
+    assert response.status_code == 200
+    assert response.json() == {"branches": ["feature-a", "feature-b"]}
+
+
+def test_post_create_environment_with_existing_branch(cfg_and_env):
+    cfg, _ = cfg_and_env
+    mock_env = MagicMock()
+    mock_env.name = "my-feature"
+    mock_env.port = 3003
+    mock_env.ttyd_port = 7603
+    payload = {"name": "my-feature", "from_branch": "main", "existing_branch": "feature/my-feature"}
+    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up:
+        app = create_app(cfg)
+        client = TestClient(app)
+        response = client.post("/api/environments", json=payload)
+    assert response.status_code == 200
+    mock_up.assert_called_once_with(
+        cfg, USER, "my-feature",
+        from_branch="main",
+        with_claude=True,
+        data_dir=None,
+        existing_branch="feature/my-feature",
+    )

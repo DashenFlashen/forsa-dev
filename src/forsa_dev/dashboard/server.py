@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from forsa_dev import tmux, ttyd
+from forsa_dev import git, tmux, ttyd
 from forsa_dev.config import Config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
 from forsa_dev.operations import compose_cmd, down_env, restart_env, serve_env, stop_env, up_env
@@ -23,6 +23,7 @@ class CreateEnvRequest(BaseModel):
     from_branch: str = "main"
     with_claude: bool = True
     data_dir: str | None = None
+    existing_branch: str | None = None
 
 
 def create_app(cfg: Config) -> FastAPI:
@@ -108,17 +109,27 @@ def create_app(cfg: Config) -> FastAPI:
     def get_config() -> dict[str, Any]:
         return {"data_dir": str(cfg.data_dir)}
 
+    @app.get("/api/branches")
+    def get_branches() -> dict[str, list[str]]:
+        try:
+            branches = git.list_branches(cfg.repo)
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        return {"branches": branches}
+
     @app.post("/api/environments")
     def post_create_environment(body: CreateEnvRequest) -> dict[str, Any]:
         user = getpass.getuser()
         data_dir = Path(body.data_dir) if body.data_dir else None
+        kwargs: dict[str, Any] = {
+            "from_branch": body.from_branch,
+            "with_claude": body.with_claude,
+            "data_dir": data_dir,
+        }
+        if body.existing_branch:
+            kwargs["existing_branch"] = body.existing_branch
         try:
-            env = up_env(
-                cfg, user, body.name,
-                from_branch=body.from_branch,
-                with_claude=body.with_claude,
-                data_dir=data_dir,
-            )
+            env = up_env(cfg, user, body.name, **kwargs)
         except ValueError as e:
             raise HTTPException(status_code=409, detail=str(e))
         except RuntimeError as e:
