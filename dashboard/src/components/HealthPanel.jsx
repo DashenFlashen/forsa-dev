@@ -1,5 +1,5 @@
 function Gauge({ label, value, max, unit }) {
-  const pct = Math.min(100, Math.round((value / max) * 100))
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
   const color =
     pct > 85 ? 'bg-red-500' :
     pct > 60 ? 'bg-yellow-500' :
