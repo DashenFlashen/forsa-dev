@@ -8,6 +8,9 @@ from typing import Any
 import tomli_w
 
 DEFAULT_CONFIG_PATH = Path.home() / ".config" / "forsa" / "config.toml"
+_DEFAULT_DASHBOARD_PORT = 8080
+_DEFAULT_TTYD_PORT_RANGE_START = 7600
+_DEFAULT_TTYD_PORT_RANGE_END = 7699
 
 
 @dataclass(frozen=True)
@@ -21,6 +24,9 @@ class Config:
     gurobi_lic: Path
     port_range_start: int
     port_range_end: int
+    dashboard_port: int = _DEFAULT_DASHBOARD_PORT
+    ttyd_port_range_start: int = _DEFAULT_TTYD_PORT_RANGE_START
+    ttyd_port_range_end: int = _DEFAULT_TTYD_PORT_RANGE_END
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
@@ -40,6 +46,11 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> Config:
         gurobi_lic=Path(data["gurobi_lic"]),
         port_range_start=int(data["port_range_start"]),
         port_range_end=int(data["port_range_end"]),
+        dashboard_port=int(data.get("dashboard_port", _DEFAULT_DASHBOARD_PORT)),
+        ttyd_port_range_start=int(
+            data.get("ttyd_port_range_start", _DEFAULT_TTYD_PORT_RANGE_START)
+        ),
+        ttyd_port_range_end=int(data.get("ttyd_port_range_end", _DEFAULT_TTYD_PORT_RANGE_END)),
     )
 
 
@@ -55,6 +66,9 @@ def save_config(config: Config, path: Path = DEFAULT_CONFIG_PATH) -> None:
         "gurobi_lic": str(config.gurobi_lic),
         "port_range_start": config.port_range_start,
         "port_range_end": config.port_range_end,
+        "dashboard_port": config.dashboard_port,
+        "ttyd_port_range_start": config.ttyd_port_range_start,
+        "ttyd_port_range_end": config.ttyd_port_range_end,
     }
     with path.open("wb") as f:
         tomli_w.dump(data, f)

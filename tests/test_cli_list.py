@@ -4,8 +4,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from forsa_dev.cli import _format_uptime, app
-from forsa_dev.list_status import check_status
+from forsa_dev.cli import app
+from forsa_dev.list_status import check_status, format_uptime
 from forsa_dev.state import Environment, save_state
 
 runner = CliRunner()
@@ -30,7 +30,8 @@ def test_list_empty(tmp_path):
     state_dir = tmp_path / "state"
     cfg_file.write_text(
         f'repo = "/tmp/repo"\nworktree_dir = "/tmp/worktrees"\ndata_dir = "/data/dev"\n'
-        f'state_dir = "{state_dir}"\nbase_url = "optbox.example.ts.net"\ndocker_image = "forsa:latest"\n'
+        f'state_dir = "{state_dir}"\nbase_url = "optbox.example.ts.net"\n'
+        'docker_image = "forsa:latest"\n'
         'gurobi_lic = "/opt/gurobi/gurobi.lic"\nport_range_start = 3000\nport_range_end = 3099\n'
     )
     result = runner.invoke(app, ["list", "--config", str(cfg_file)])
@@ -48,7 +49,8 @@ def test_list_shows_environments(tmp_path):
     cfg_file = tmp_path / "config.toml"
     cfg_file.write_text(
         f'repo = "/tmp/repo"\nworktree_dir = "/tmp/worktrees"\ndata_dir = "/data/dev"\n'
-        f'state_dir = "{state_dir}"\nbase_url = "optbox.example.ts.net"\ndocker_image = "forsa:latest"\n'
+        f'state_dir = "{state_dir}"\nbase_url = "optbox.example.ts.net"\n'
+        'docker_image = "forsa:latest"\n'
         'gurobi_lic = "/opt/gurobi/gurobi.lic"\nport_range_start = 3000\nport_range_end = 3099\n'
     )
     result = runner.invoke(app, ["list", "--config", str(cfg_file)])
@@ -82,31 +84,31 @@ def test_check_status_served_port_closed():
     assert status.server == "crashed"
 
 
-# _format_uptime unit tests
+# format_uptime unit tests
 def test_format_uptime_none():
-    assert _format_uptime(None) == "-"
+    assert format_uptime(None) == "-"
 
 
 def test_format_uptime_minutes():
     served_at = datetime.now(tz=timezone.utc) - timedelta(minutes=42)
-    assert _format_uptime(served_at) == "42m"
+    assert format_uptime(served_at) == "42m"
 
 
 def test_format_uptime_zero_minutes():
     served_at = datetime.now(tz=timezone.utc) - timedelta(seconds=30)
-    assert _format_uptime(served_at) == "0m"
+    assert format_uptime(served_at) == "0m"
 
 
 def test_format_uptime_hours():
     served_at = datetime.now(tz=timezone.utc) - timedelta(hours=2, minutes=15)
-    assert _format_uptime(served_at) == "2h 15m"
+    assert format_uptime(served_at) == "2h 15m"
 
 
 def test_format_uptime_exactly_one_hour():
     served_at = datetime.now(tz=timezone.utc) - timedelta(hours=1)
-    assert _format_uptime(served_at) == "1h 0m"
+    assert format_uptime(served_at) == "1h 0m"
 
 
 def test_format_uptime_days():
     served_at = datetime.now(tz=timezone.utc) - timedelta(days=3, hours=7)
-    assert _format_uptime(served_at) == "3d 7h"
+    assert format_uptime(served_at) == "3d 7h"

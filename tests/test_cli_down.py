@@ -1,6 +1,6 @@
 import getpass
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from typer.testing import CliRunner
@@ -15,7 +15,6 @@ USER = getpass.getuser()
 @pytest.fixture()
 def setup(tmp_path, git_repo):
     worktree = tmp_path / "worktrees" / "feature-x"
-    # Create a real worktree so git worktree remove works
     import subprocess
     subprocess.run(
         ["git", "worktree", "add", "-b", "feature-x", str(worktree), "main"],
@@ -52,18 +51,24 @@ def setup(tmp_path, git_repo):
 
 def test_down_requires_force_when_branch_not_pushed(setup):
     cfg_file, state_dir, env = setup
-    result = runner.invoke(app, ["down", "feature-x", "--config", str(cfg_file)])
+    with patch("forsa_dev.cli.down_env", side_effect=RuntimeError("not been pushed")):
+        result = runner.invoke(app, ["down", "feature-x", "--config", str(cfg_file)])
     assert result.exit_code != 0
     assert "not been pushed" in result.output or "pushed" in result.output
-    # State file should still exist
-    assert (state_dir / f"{USER}-feature-x.json").exists()
 
 
 def test_down_force_removes_everything(setup):
     cfg_file, state_dir, env = setup
-    with patch("forsa_dev.tmux.kill_session"), \
-         patch("subprocess.run") as mock_run:
-        mock_run.return_value = MagicMock(returncode=0)
+    with patch("forsa_dev.cli.down_env") as mock_down:
         result = runner.invoke(app, ["down", "feature-x", "--force", "--config", str(cfg_file)])
     assert result.exit_code == 0, result.output
-    assert not (state_dir / f"{USER}-feature-x.json").exists()
+    mock_down.assert_called_once()
+    assert mock_down.call_args.kwargs["force"] is True
+
+
+def test_down_not_found(setup):
+    cfg_file, state_dir, _ = setup
+    with patch("forsa_dev.cli.down_env", side_effect=FileNotFoundError("no env")):
+        result = runner.invoke(app, ["down", "nonexistent", "--config", str(cfg_file)])
+    assert result.exit_code != 0
+    assert "not found" in result.output

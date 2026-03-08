@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -79,3 +80,36 @@ def test_state_with_url_roundtrips(tmp_path):
     loaded = load_state("anders", "ticket-42", tmp_path)
     assert loaded.url == "optbox.example.ts.net/ticket-42/"
     assert loaded.served_at is not None
+
+
+def test_deserialize_state_without_ttyd_fields(tmp_path):
+    """State files written before ttyd support must still load."""
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    old_data = {
+        "name": "ticket-42", "user": "anders", "branch": "ticket-42",
+        "worktree": str(tmp_path / "wt"), "tmux_session": "anders-ticket-42",
+        "compose_file": str(tmp_path / "compose.yml"),
+        "port": 3002, "url": None,
+        "created_at": "2026-03-07T22:00:00+00:00", "served_at": None,
+    }
+    (state_dir / "anders-ticket-42.json").write_text(json.dumps(old_data))
+    env = load_state("anders", "ticket-42", state_dir)
+    assert env.ttyd_port is None
+    assert env.ttyd_pid is None
+
+
+def test_state_roundtrip_with_ttyd_fields(tmp_path):
+    state_dir = tmp_path / "state"
+    env = Environment(
+        name="ticket-42", user="anders", branch="ticket-42",
+        worktree=tmp_path / "wt", tmux_session="anders-ticket-42",
+        compose_file=tmp_path / "compose.yml",
+        port=3002, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, ttyd_port=7602, ttyd_pid=12345,
+    )
+    save_state(env, state_dir)
+    loaded = load_state("anders", "ticket-42", state_dir)
+    assert loaded.ttyd_port == 7602
+    assert loaded.ttyd_pid == 12345
