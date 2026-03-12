@@ -203,7 +203,8 @@ def dashboard(
     if not user_configs:
         typer.echo("Error: no users found in forsa-devs group (or no configs exist).", err=True)
         raise typer.Exit(1)
-    actual_port = port if port is not None else 8080
+    any_cfg = next(iter(user_configs.values()))
+    actual_port = port if port is not None else any_cfg.dashboard_port
     app_instance = create_app(user_configs)
     uvicorn.run(app_instance, host="0.0.0.0", port=actual_port)
 

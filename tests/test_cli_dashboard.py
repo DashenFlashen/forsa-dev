@@ -38,13 +38,15 @@ def test_dashboard_port_flag_overrides_default():
     assert kwargs["port"] == 9090
 
 
-def test_dashboard_default_port_is_8080():
+def test_dashboard_default_port_from_config():
+    mock_cfg = MagicMock()
+    mock_cfg.dashboard_port = 80
     with patch("forsa_dev.dashboard.server.discover_users") as mock_discover, \
          patch("forsa_dev.dashboard.server.create_app") as mock_create_app, \
          patch("uvicorn.run") as mock_run:
-        mock_discover.return_value = {"alice": MagicMock()}
+        mock_discover.return_value = {"alice": mock_cfg}
         mock_create_app.return_value = MagicMock()
         result = runner.invoke(app, ["dashboard"])
     assert result.exit_code == 0, result.output
     _, kwargs = mock_run.call_args
-    assert kwargs["port"] == 8080
+    assert kwargs["port"] == 80
