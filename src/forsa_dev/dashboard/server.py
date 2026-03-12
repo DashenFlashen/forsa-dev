@@ -26,12 +26,21 @@ class CreateEnvRequest(BaseModel):
     existing_branch: str | None = None
 
 
-def create_app(cfg: Config) -> FastAPI:
+def create_app(user_configs: dict[str, Config]) -> FastAPI:
+    if not user_configs:
+        raise ValueError("user_configs must not be empty")
+
+    state_dirs = {cfg.state_dir for cfg in user_configs.values()}
+    if len(state_dirs) > 1:
+        raise ValueError(f"All users must share the same state_dir, got: {state_dirs}")
+    state_dir = state_dirs.pop()
+    base_url = next(iter(user_configs.values())).base_url
+
     app = FastAPI()
 
     @app.get("/api/environments")
     def get_environments() -> list[dict[str, Any]]:
-        envs = list_states(cfg.state_dir)
+        envs = list_states(state_dir)
         result = []
         for env in envs:
             tmux_stat = tmux.session_status(env.tmux_session)
@@ -46,7 +55,7 @@ def create_app(cfg: Config) -> FastAPI:
                 "branch": env.branch,
                 "port": env.port,
                 "ttyd_port": env.ttyd_port,
-                "url": env.url or f"http://{cfg.base_url}:{env.port}",
+                "url": env.url or f"http://{base_url}:{env.port}",
                 "created_at": env.created_at.isoformat(),
                 "served_at": env.served_at.isoformat() if env.served_at else None,
                 "status": {
@@ -75,6 +84,7 @@ def create_app(cfg: Config) -> FastAPI:
     @app.post("/api/environments/{name}/serve")
     def post_serve(name: str) -> dict[str, str]:
         user = getpass.getuser()
+        cfg = user_configs[user]
         try:
             serve_env(cfg, user, name)
         except FileNotFoundError:
@@ -86,6 +96,7 @@ def create_app(cfg: Config) -> FastAPI:
     @app.post("/api/environments/{name}/stop")
     def post_stop(name: str) -> dict[str, str]:
         user = getpass.getuser()
+        cfg = user_configs[user]
         try:
             stop_env(cfg, user, name)
         except FileNotFoundError:
@@ -97,6 +108,7 @@ def create_app(cfg: Config) -> FastAPI:
     @app.post("/api/environments/{name}/restart")
     def post_restart(name: str) -> dict[str, str]:
         user = getpass.getuser()
+        cfg = user_configs[user]
         try:
             restart_env(cfg, user, name)
         except FileNotFoundError:
@@ -107,10 +119,14 @@ def create_app(cfg: Config) -> FastAPI:
 
     @app.get("/api/config")
     def get_config() -> dict[str, Any]:
+        user = getpass.getuser()
+        cfg = user_configs[user]
         return {"data_dir": str(cfg.data_dir)}
 
     @app.get("/api/branches")
     def get_branches() -> dict[str, list[str]]:
+        user = getpass.getuser()
+        cfg = user_configs[user]
         try:
             branches = git.list_branches(cfg.repo)
         except RuntimeError as e:
@@ -120,6 +136,7 @@ def create_app(cfg: Config) -> FastAPI:
     @app.post("/api/environments")
     def post_create_environment(body: CreateEnvRequest) -> dict[str, Any]:
         user = getpass.getuser()
+        cfg = user_configs[user]
         data_dir = Path(body.data_dir) if body.data_dir else None
         try:
             env = up_env(
@@ -138,6 +155,7 @@ def create_app(cfg: Config) -> FastAPI:
     @app.delete("/api/environments/{name}")
     def delete_environment(name: str, force: bool = False) -> dict[str, str]:
         user = getpass.getuser()
+        cfg = user_configs[user]
         try:
             down_env(cfg, user, name, force=force)
         except FileNotFoundError:
@@ -150,7 +168,7 @@ def create_app(cfg: Config) -> FastAPI:
     async def stream_logs(name: str) -> StreamingResponse:
         user = getpass.getuser()
         try:
-            env = load_state(user, name, cfg.state_dir)
+            env = load_state(user, name, state_dir)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
 
