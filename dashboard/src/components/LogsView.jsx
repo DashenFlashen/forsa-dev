@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 
 const MAX_LINES = 1000
 
-export default function LogsView({ envName }) {
+export default function LogsView({ envName, envUser }) {
   const [lines, setLines] = useState([])
   const [connected, setConnected] = useState(false)
   const bottomRef = useRef(null)
 
   useEffect(() => {
     setLines([])
-    const es = new EventSource(`/api/environments/${envName}/logs`)
+    const es = new EventSource(`/api/environments/${envUser}/${envName}/logs`)
     es.onopen = () => setConnected(true)
     es.onmessage = (e) => {
       setLines((prev) => {
@@ -19,7 +19,7 @@ export default function LogsView({ envName }) {
     }
     es.onerror = () => setConnected(false)
     return () => es.close()
-  }, [envName])
+  }, [envName, envUser])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'instant' })

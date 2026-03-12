@@ -44,11 +44,11 @@ export default function EnvironmentTable({ envs, onAction, loadingActions, onSel
               key={`${env.user}-${env.name}`}
               env={env}
               onAction={onAction}
-              loadingAction={loadingActions[env.name]}
+              loadingAction={loadingActions[`${env.user}/${env.name}`]}
               onSelect={onSelect}
               isSelected={selectedEnv?.user === env.user && selectedEnv?.name === env.name}
               onDelete={onDelete}
-              loadingDelete={!!loadingDeletes[env.name]}
+              loadingDelete={!!loadingDeletes[`${env.user}/${env.name}`]}
             />
           ))}
         </tbody>

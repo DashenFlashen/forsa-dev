@@ -49,7 +49,7 @@ export default function TerminalView({ env, host, onClose }) {
       </div>
 
       {tab === 'logs' ? (
-        <LogsView envName={env.name} />
+        <LogsView envName={env.name} envUser={env.user} />
       ) : src ? (
         <iframe
           src={src}

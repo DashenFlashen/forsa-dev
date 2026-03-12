@@ -29,7 +29,7 @@ export default function ActionButtons({ env, onAction, loading }) {
         <ActionBtn
           icon={Play}
           label="Start server"
-          onClick={() => onAction(env.name, 'serve')}
+          onClick={() => onAction(env.user, env.name, 'serve')}
           disabled={!!loading}
           loading={loading === 'serve'}
           colorClass="text-green-400 hover:bg-green-900/40 hover:text-green-300"
@@ -40,7 +40,7 @@ export default function ActionButtons({ env, onAction, loading }) {
           <ActionBtn
             icon={Square}
             label="Stop server"
-            onClick={() => onAction(env.name, 'stop')}
+            onClick={() => onAction(env.user, env.name, 'stop')}
             disabled={!!loading}
             loading={loading === 'stop'}
             colorClass="text-gray-400 hover:bg-gray-800 hover:text-gray-200"
@@ -48,7 +48,7 @@ export default function ActionButtons({ env, onAction, loading }) {
           <ActionBtn
             icon={RefreshCw}
             label="Restart server"
-            onClick={() => onAction(env.name, 'restart')}
+            onClick={() => onAction(env.user, env.name, 'restart')}
             disabled={!!loading}
             loading={loading === 'restart'}
             colorClass="text-blue-400 hover:bg-blue-900/40 hover:text-blue-300"
