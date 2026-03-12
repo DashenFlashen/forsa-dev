@@ -33,7 +33,7 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
     const force = confirmDelete === 'force'
     setConfirmDelete(null)
     try {
-      await onDelete(env.name, force)
+      await onDelete(env.user, env.name, force)
     } catch (e) {
       if (e.message.includes('409')) {
         setConfirmDelete('force')

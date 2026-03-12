@@ -5,10 +5,24 @@ import EnvironmentTable from './components/EnvironmentTable'
 import ErrorToast from './components/ErrorToast'
 import HealthPanel from './components/HealthPanel'
 import TerminalView from './components/TerminalView'
+import UserPicker from './components/UserPicker'
 import useInterval from './hooks/useInterval'
 
 const ENV_POLL_MS = 3000
 const HEALTH_POLL_MS = 10000
+
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return match ? match[2] : null
+}
+
+function setCookie(name, value) {
+  document.cookie = `${name}=${value}; path=/; max-age=31536000`
+}
+
+function clearCookie(name) {
+  document.cookie = `${name}=; path=/; max-age=0`
+}
 
 async function apiFetch(path, options) {
   const resp = await fetch(path, options)
@@ -17,6 +31,7 @@ async function apiFetch(path, options) {
 }
 
 export default function App() {
+  const [user, setUser] = useState(() => getCookie('forsa_user'))
   const [envs, setEnvs] = useState([])
   const [health, setHealth] = useState(null)
   const [defaultDataDir, setDefaultDataDir] = useState('')
@@ -24,6 +39,16 @@ export default function App() {
   const [loadingActions, setLoadingActions] = useState({})
   const [loadingDeletes, setLoadingDeletes] = useState({})
   const [selectedEnv, setSelectedEnv] = useState(null)
+
+  const handleSelectUser = useCallback((name) => {
+    setCookie('forsa_user', name)
+    setUser(name)
+  }, [])
+
+  const handleSwitchUser = useCallback(() => {
+    clearCookie('forsa_user')
+    setUser(null)
+  }, [])
 
   const fetchEnvs = useCallback(async () => {
     try {
@@ -46,22 +71,24 @@ export default function App() {
 
   // Initial fetch on mount
   useEffect(() => {
+    if (!user) return
     fetchEnvs()
     fetchHealth()
     apiFetch('/api/config').then((d) => setDefaultDataDir(d.data_dir)).catch(() => {})
-  }, [fetchEnvs, fetchHealth])
+  }, [user, fetchEnvs, fetchHealth])
 
-  useInterval(fetchEnvs, ENV_POLL_MS)
-  useInterval(fetchHealth, HEALTH_POLL_MS)
+  useInterval(fetchEnvs, user ? ENV_POLL_MS : null)
+  useInterval(fetchHealth, user ? HEALTH_POLL_MS : null)
 
-  const handleAction = useCallback(async (name, action) => {
-    setLoadingActions((prev) => ({ ...prev, [name]: action }))
+  const handleAction = useCallback(async (owner, name, action) => {
+    const key = `${owner}/${name}`
+    setLoadingActions((prev) => ({ ...prev, [key]: action }))
     try {
-      await apiFetch(`/api/environments/${name}/${action}`, { method: 'POST' })
+      await apiFetch(`/api/environments/${owner}/${name}/${action}`, { method: 'POST' })
     } catch (e) {
       setError(e.message)
     } finally {
-      setLoadingActions((prev) => ({ ...prev, [name]: null }))
+      setLoadingActions((prev) => ({ ...prev, [key]: null }))
       fetchEnvs()
     }
   }, [fetchEnvs])
@@ -84,12 +111,15 @@ export default function App() {
     }
   }, [fetchEnvs])
 
-  const handleDelete = useCallback(async (name, force = false) => {
-    setLoadingDeletes((prev) => ({ ...prev, [name]: true }))
+  const handleDelete = useCallback(async (owner, name, force = false) => {
+    const key = `${owner}/${name}`
+    setLoadingDeletes((prev) => ({ ...prev, [key]: true }))
     try {
-      const url = force ? `/api/environments/${name}?force=true` : `/api/environments/${name}`
+      const url = force
+        ? `/api/environments/${owner}/${name}?force=true`
+        : `/api/environments/${owner}/${name}`
       await apiFetch(url, { method: 'DELETE' })
-      if (selectedEnv?.name === name) setSelectedEnv(null)
+      if (selectedEnv?.name === name && selectedEnv?.user === owner) setSelectedEnv(null)
       await fetchEnvs()
     } catch (e) {
       if (e.message.includes('409')) {
@@ -98,18 +128,22 @@ export default function App() {
         setError(e.message)
       }
     } finally {
-      setLoadingDeletes((prev) => ({ ...prev, [name]: false }))
+      setLoadingDeletes((prev) => ({ ...prev, [key]: false }))
     }
   }, [fetchEnvs, selectedEnv])
 
   const handleSelect = useCallback((env) => {
-    setSelectedEnv((prev) => prev?.name === env.name ? null : env)
+    setSelectedEnv((prev) => prev?.name === env.name && prev?.user === env.user ? null : env)
   }, [])
 
   const handleCloseTerminal = useCallback(() => setSelectedEnv(null), [])
 
   // Derive host from current page location
   const host = window.location.hostname
+
+  if (!user) {
+    return <UserPicker onSelect={handleSelectUser} />
+  }
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -121,6 +155,17 @@ export default function App() {
               {host}
             </span>
           )}
+          <div className="ml-auto flex items-center gap-2 text-sm text-gray-400">
+            <span>
+              logged in as <span className="font-medium text-gray-200 capitalize">{user}</span>
+            </span>
+            <button
+              onClick={handleSwitchUser}
+              className="text-blue-400 hover:text-blue-300 hover:underline"
+            >
+              switch
+            </button>
+          </div>
         </div>
       </header>
       <ErrorToast message={error} onDismiss={() => setError(null)} />
