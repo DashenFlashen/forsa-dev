@@ -26,7 +26,14 @@ function clearCookie(name) {
 
 async function apiFetch(path, options) {
   const resp = await fetch(path, options)
-  if (!resp.ok) throw new Error(`${options?.method ?? 'GET'} ${path} failed: ${resp.status}`)
+  if (!resp.ok) {
+    let detail = `${options?.method ?? 'GET'} ${path} failed: ${resp.status}`
+    try {
+      const body = await resp.json()
+      if (body.detail) detail = body.detail
+    } catch { /* no JSON body */ }
+    throw new Error(detail)
+  }
   return resp.json()
 }
 
