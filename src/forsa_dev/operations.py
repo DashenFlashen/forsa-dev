@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import subprocess
 from dataclasses import replace
@@ -115,8 +116,10 @@ def up_env(
             git.delete_branch(cfg.repo, name, force=True)
         raise
 
+    shell = os.environ.get("SHELL", "/bin/bash")
     command = (
-        "zsh -i -c 'claude --dangerously-skip-permissions || exec zsh'" if with_claude else None
+        f"{shell} -i -c 'claude --dangerously-skip-permissions || exec {shell}'"
+        if with_claude else None
     )
     try:
         tmux.create_session(full_name, worktree, command=command)
