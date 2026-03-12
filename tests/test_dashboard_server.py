@@ -49,6 +49,37 @@ def setup(tmp_path):
     return user_configs, cfg, env
 
 
+def test_get_users_returns_configured_users(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.get("/api/users")
+    assert response.status_code == 200
+    assert response.json() == [{"name": TEST_USER}]
+
+
+def test_get_users_multiple_users(tmp_path):
+    state_dir = tmp_path / "state"
+    cfg1 = Config(
+        repo=tmp_path, worktree_dir=tmp_path, data_dir=Path("/data/dev"),
+        state_dir=state_dir, base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"), port_range_start=3000, port_range_end=3099,
+    )
+    cfg2 = Config(
+        repo=tmp_path, worktree_dir=tmp_path / "other", data_dir=Path("/data/dev"),
+        state_dir=state_dir, base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"), port_range_start=3000, port_range_end=3099,
+    )
+    user_configs = {"anders": cfg1, "hanna": cfg2}
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.get("/api/users")
+    assert response.status_code == 200
+    names = [u["name"] for u in response.json()]
+    assert "anders" in names
+    assert "hanna" in names
+
+
 def test_get_environments_returns_list(setup):
     user_configs, _, _ = setup
     with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \

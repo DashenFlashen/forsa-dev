@@ -38,6 +38,10 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
 
     app = FastAPI()
 
+    @app.get("/api/users")
+    def get_users() -> list[dict[str, str]]:
+        return [{"name": name} for name in user_configs]
+
     @app.get("/api/environments")
     def get_environments() -> list[dict[str, Any]]:
         envs = list_states(state_dir)
