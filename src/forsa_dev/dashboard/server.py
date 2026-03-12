@@ -32,7 +32,7 @@ def discover_users() -> dict[str, Config]:
             config_path = Path(user_info.pw_dir) / ".config" / "forsa" / "config.toml"
             if config_path.exists():
                 configs[username] = load_config(config_path)
-        except (KeyError, FileNotFoundError):
+        except (KeyError, FileNotFoundError, PermissionError):
             continue
     return configs
 

@@ -570,6 +570,28 @@ def test_discover_users_skips_missing_config(tmp_path, monkeypatch):
     assert "bob" not in result
 
 
+def test_discover_users_skips_unreadable_config(tmp_path, monkeypatch):
+    home = tmp_path / "home" / "carol"
+    config_path = home / ".config" / "forsa" / "config.toml"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text("dummy")
+    config_path.chmod(0o000)
+
+    mock_group = MagicMock()
+    mock_group.gr_mem = ["carol"]
+    monkeypatch.setattr("forsa_dev.dashboard.server.grp.getgrnam", lambda name: mock_group)
+
+    mock_pw = MagicMock()
+    mock_pw.pw_dir = str(home)
+    monkeypatch.setattr("forsa_dev.dashboard.server.pwd.getpwnam", lambda name: mock_pw)
+
+    result = discover_users()
+    assert "carol" not in result
+
+    # Restore permissions so pytest can clean up tmp_path
+    config_path.chmod(0o644)
+
+
 def test_discover_users_returns_empty_when_group_missing(monkeypatch):
     monkeypatch.setattr(
         "forsa_dev.dashboard.server.grp.getgrnam",
