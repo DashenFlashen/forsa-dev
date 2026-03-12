@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import getpass
 from pathlib import Path
 from typing import Any
 
 import psutil
-from fastapi import FastAPI, HTTPException
+from fastapi import Cookie, Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -37,6 +36,16 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
     base_url = next(iter(user_configs.values())).base_url
 
     app = FastAPI()
+
+    def get_user(forsa_user: str = Cookie(default=None)) -> str:
+        if not forsa_user or forsa_user not in user_configs:
+            raise HTTPException(status_code=401, detail="No user selected")
+        return forsa_user
+
+    def _get_owner_cfg(owner: str) -> Config:
+        if owner not in user_configs:
+            raise HTTPException(status_code=404, detail=f"Unknown user '{owner}'")
+        return user_configs[owner]
 
     @app.get("/api/users")
     def get_users() -> list[dict[str, str]]:
@@ -85,51 +94,13 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             "disk_total_gb": round(disk.total / 1e9, 0),
         }
 
-    @app.post("/api/environments/{name}/serve")
-    def post_serve(name: str) -> dict[str, str]:
-        user = getpass.getuser()
-        cfg = user_configs[user]
-        try:
-            serve_env(cfg, user, name)
-        except FileNotFoundError:
-            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
-        except RuntimeError as e:
-            raise HTTPException(status_code=500, detail=str(e))
-        return {"status": "ok"}
-
-    @app.post("/api/environments/{name}/stop")
-    def post_stop(name: str) -> dict[str, str]:
-        user = getpass.getuser()
-        cfg = user_configs[user]
-        try:
-            stop_env(cfg, user, name)
-        except FileNotFoundError:
-            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
-        except RuntimeError as e:
-            raise HTTPException(status_code=500, detail=str(e))
-        return {"status": "ok"}
-
-    @app.post("/api/environments/{name}/restart")
-    def post_restart(name: str) -> dict[str, str]:
-        user = getpass.getuser()
-        cfg = user_configs[user]
-        try:
-            restart_env(cfg, user, name)
-        except FileNotFoundError:
-            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
-        except RuntimeError as e:
-            raise HTTPException(status_code=500, detail=str(e))
-        return {"status": "ok"}
-
     @app.get("/api/config")
-    def get_config() -> dict[str, Any]:
-        user = getpass.getuser()
+    def get_config(user: str = Depends(get_user)) -> dict[str, Any]:
         cfg = user_configs[user]
         return {"data_dir": str(cfg.data_dir)}
 
     @app.get("/api/branches")
-    def get_branches() -> dict[str, list[str]]:
-        user = getpass.getuser()
+    def get_branches(user: str = Depends(get_user)) -> dict[str, list[str]]:
         cfg = user_configs[user]
         try:
             branches = git.list_branches(cfg.repo)
@@ -138,8 +109,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
         return {"branches": branches}
 
     @app.post("/api/environments")
-    def post_create_environment(body: CreateEnvRequest) -> dict[str, Any]:
-        user = getpass.getuser()
+    def post_create_environment(body: CreateEnvRequest, user: str = Depends(get_user)) -> dict[str, Any]:
         cfg = user_configs[user]
         data_dir = Path(body.data_dir) if body.data_dir else None
         try:
@@ -156,23 +126,55 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             raise HTTPException(status_code=500, detail=str(e))
         return {"name": env.name, "port": env.port, "ttyd_port": env.ttyd_port}
 
-    @app.delete("/api/environments/{name}")
-    def delete_environment(name: str, force: bool = False) -> dict[str, str]:
-        user = getpass.getuser()
-        cfg = user_configs[user]
+    @app.post("/api/environments/{owner}/{name}/serve")
+    def post_serve(owner: str, name: str, _user: str = Depends(get_user)) -> dict[str, str]:
+        cfg = _get_owner_cfg(owner)
         try:
-            down_env(cfg, user, name, force=force)
+            serve_env(cfg, owner, name)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "ok"}
+
+    @app.post("/api/environments/{owner}/{name}/stop")
+    def post_stop(owner: str, name: str, _user: str = Depends(get_user)) -> dict[str, str]:
+        cfg = _get_owner_cfg(owner)
+        try:
+            stop_env(cfg, owner, name)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "ok"}
+
+    @app.post("/api/environments/{owner}/{name}/restart")
+    def post_restart(owner: str, name: str, _user: str = Depends(get_user)) -> dict[str, str]:
+        cfg = _get_owner_cfg(owner)
+        try:
+            restart_env(cfg, owner, name)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "ok"}
+
+    @app.delete("/api/environments/{owner}/{name}")
+    def delete_environment(owner: str, name: str, force: bool = False, _user: str = Depends(get_user)) -> dict[str, str]:
+        cfg = _get_owner_cfg(owner)
+        try:
+            down_env(cfg, owner, name, force=force)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
         except RuntimeError as e:
             raise HTTPException(status_code=409, detail=str(e))
         return {"status": "ok"}
 
-    @app.get("/api/environments/{name}/logs")
-    async def stream_logs(name: str) -> StreamingResponse:
-        user = getpass.getuser()
+    @app.get("/api/environments/{owner}/{name}/logs")
+    async def stream_logs(owner: str, name: str) -> StreamingResponse:
+        _get_owner_cfg(owner)
         try:
-            env = load_state(user, name, state_dir)
+            env = load_state(owner, name, state_dir)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
 

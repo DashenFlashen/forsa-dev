@@ -49,6 +49,9 @@ def setup(tmp_path):
     return user_configs, cfg, env
 
 
+# --- GET /api/users ---
+
+
 def test_get_users_returns_configured_users(setup):
     user_configs, _, _ = setup
     app = create_app(user_configs)
@@ -78,6 +81,9 @@ def test_get_users_multiple_users(tmp_path):
     names = [u["name"] for u in response.json()]
     assert "anders" in names
     assert "hanna" in names
+
+
+# --- GET /api/environments ---
 
 
 def test_get_environments_returns_list(setup):
@@ -119,124 +125,6 @@ def test_get_environments_empty_state_dir(tmp_path):
     assert response.json() == []
 
 
-def test_get_health_returns_system_info(setup):
-    user_configs, _, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    response = client.get("/api/health")
-    assert response.status_code == 200
-    data = response.json()
-    assert "cpu_percent" in data
-    assert "cpu_count" in data
-    assert "ram_used_gb" in data
-    assert "ram_total_gb" in data
-    assert "disk_used_gb" in data
-    assert "disk_total_gb" in data
-
-
-def test_post_serve_calls_serve_env(setup):
-    user_configs, cfg, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.serve_env") as mock_serve, \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/ticket-42/serve")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
-    mock_serve.assert_called_once_with(cfg, TEST_USER, "ticket-42")
-
-
-def test_post_serve_404_when_not_found(setup):
-    user_configs, _, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.serve_env", side_effect=FileNotFoundError()), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/nonexistent/serve")
-    assert response.status_code == 404
-
-
-def test_post_serve_500_on_runtime_error(setup):
-    user_configs, _, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.serve_env", side_effect=RuntimeError("compose failed")), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/ticket-42/serve")
-    assert response.status_code == 500
-
-
-def test_post_stop_calls_stop_env(setup):
-    user_configs, cfg, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.stop_env") as mock_stop, \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/ticket-42/stop")
-    assert response.status_code == 200
-    mock_stop.assert_called_once_with(cfg, TEST_USER, "ticket-42")
-
-
-def test_post_stop_404_when_not_found(setup):
-    user_configs, _, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.stop_env", side_effect=FileNotFoundError()), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/nonexistent/stop")
-    assert response.status_code == 404
-
-
-def test_post_stop_500_on_runtime_error(setup):
-    user_configs, _, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.stop_env", side_effect=RuntimeError("compose failed")), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/ticket-42/stop")
-    assert response.status_code == 500
-
-
-def test_post_restart_calls_restart_env(setup):
-    user_configs, cfg, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.restart_env") as mock_restart, \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/ticket-42/restart")
-    assert response.status_code == 200
-    mock_restart.assert_called_once_with(cfg, TEST_USER, "ticket-42")
-
-
-def test_post_restart_404_when_not_found(setup):
-    user_configs, _, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.restart_env", side_effect=FileNotFoundError()), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/nonexistent/restart")
-    assert response.status_code == 404
-
-
-def test_post_restart_500_on_runtime_error(setup):
-    user_configs, _, _ = setup
-    app = create_app(user_configs)
-    client = TestClient(app)
-    with patch("forsa_dev.dashboard.server.restart_env", side_effect=RuntimeError("compose failed")), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        response = client.post("/api/environments/ticket-42/restart")
-    assert response.status_code == 500
-
-
 def test_get_environments_includes_ttyd_port(setup):
     user_configs, _, _ = setup
     with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
@@ -253,17 +141,81 @@ def test_get_environments_includes_ttyd_port(setup):
     assert "ttyd" in data[0]["status"]
 
 
+# --- GET /api/health ---
+
+
+def test_get_health_returns_system_info(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert "cpu_percent" in data
+    assert "cpu_count" in data
+    assert "ram_used_gb" in data
+    assert "ram_total_gb" in data
+    assert "disk_used_gb" in data
+    assert "disk_total_gb" in data
+
+
+# --- Cookie auth (401 tests) ---
+
+
+def test_post_create_returns_401_without_cookie(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.post("/api/environments", json={"name": "new-env"})
+    assert response.status_code == 401
+
+
+def test_post_create_returns_401_with_invalid_user_cookie(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", "nonexistent")
+    response = client.post("/api/environments", json={"name": "new-env"})
+    assert response.status_code == 401
+
+
+def test_post_serve_returns_401_without_cookie(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.post(f"/api/environments/{TEST_USER}/ticket-42/serve")
+    assert response.status_code == 401
+
+
+def test_get_config_returns_401_without_cookie(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.get("/api/config")
+    assert response.status_code == 401
+
+
+def test_get_branches_returns_401_without_cookie(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.get("/api/branches")
+    assert response.status_code == 401
+
+
+# --- POST /api/environments (create) ---
+
+
 def test_post_create_environment_calls_up_env(setup):
     user_configs, cfg, _ = setup
     mock_env = MagicMock()
     mock_env.name = "new-env"
     mock_env.port = 3003
     mock_env.ttyd_port = 7603
-    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up, \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
+    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up:
         app = create_app(user_configs)
         client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
         response = client.post("/api/environments", json={"name": "new-env", "from_branch": "main"})
     assert response.status_code == 200
     mock_up.assert_called_once_with(
@@ -279,11 +231,10 @@ def test_post_create_environment_respects_with_claude_false(setup):
     mock_env.port = 3003
     mock_env.ttyd_port = 7603
     payload = {"name": "new-env", "from_branch": "main", "with_claude": False}
-    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up, \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
+    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up:
         app = create_app(user_configs)
         client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
         response = client.post("/api/environments", json=payload)
     assert response.status_code == 200
     mock_up.assert_called_once_with(
@@ -294,11 +245,10 @@ def test_post_create_environment_respects_with_claude_false(setup):
 
 def test_post_create_environment_409_if_exists(setup):
     user_configs, _, _ = setup
-    with patch("forsa_dev.dashboard.server.up_env", side_effect=ValueError("already exists")), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
+    with patch("forsa_dev.dashboard.server.up_env", side_effect=ValueError("already exists")):
         app = create_app(user_configs)
         client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
         response = client.post(
             "/api/environments", json={"name": "ticket-42", "from_branch": "main"}
         )
@@ -307,81 +257,11 @@ def test_post_create_environment_409_if_exists(setup):
 
 def test_post_create_environment_500_on_runtime_error(setup):
     user_configs, _, _ = setup
-    with patch("forsa_dev.dashboard.server.up_env", side_effect=RuntimeError("git failed")), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
+    with patch("forsa_dev.dashboard.server.up_env", side_effect=RuntimeError("git failed")):
         app = create_app(user_configs)
         client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
         response = client.post("/api/environments", json={"name": "new", "from_branch": "main"})
-    assert response.status_code == 500
-
-
-def test_delete_environment_calls_down_env(setup):
-    user_configs, cfg, _ = setup
-    with patch("forsa_dev.dashboard.server.down_env") as mock_down, \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        app = create_app(user_configs)
-        client = TestClient(app)
-        response = client.delete("/api/environments/ticket-42")
-    assert response.status_code == 200
-    mock_down.assert_called_once_with(cfg, TEST_USER, "ticket-42", force=False)
-
-
-def test_delete_environment_force_param(setup):
-    user_configs, cfg, _ = setup
-    with patch("forsa_dev.dashboard.server.down_env") as mock_down, \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        app = create_app(user_configs)
-        client = TestClient(app)
-        response = client.delete("/api/environments/ticket-42?force=true")
-    assert response.status_code == 200
-    mock_down.assert_called_once_with(cfg, TEST_USER, "ticket-42", force=True)
-
-
-def test_delete_environment_404_when_not_found(setup):
-    user_configs, _, _ = setup
-    with patch("forsa_dev.dashboard.server.down_env", side_effect=FileNotFoundError()), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        app = create_app(user_configs)
-        client = TestClient(app)
-        response = client.delete("/api/environments/nonexistent")
-    assert response.status_code == 404
-
-
-def test_delete_environment_409_on_unpushed_branch(setup):
-    user_configs, _, _ = setup
-    with patch("forsa_dev.dashboard.server.down_env", side_effect=RuntimeError("not been pushed")), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        app = create_app(user_configs)
-        client = TestClient(app)
-        response = client.delete("/api/environments/ticket-42")
-    assert response.status_code == 409
-
-
-def test_get_branches_returns_list(setup):
-    user_configs, _, _ = setup
-    with patch("forsa_dev.dashboard.server.git.list_branches", return_value=["feature-a", "feature-b"]), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        app = create_app(user_configs)
-        client = TestClient(app)
-        response = client.get("/api/branches")
-    assert response.status_code == 200
-    assert response.json() == {"branches": ["feature-a", "feature-b"]}
-
-
-def test_get_branches_500_on_runtime_error(setup):
-    user_configs, _, _ = setup
-    with patch("forsa_dev.dashboard.server.git.list_branches", side_effect=RuntimeError("git failed")), \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
-        app = create_app(user_configs)
-        client = TestClient(app)
-        response = client.get("/api/branches")
     assert response.status_code == 500
 
 
@@ -392,11 +272,10 @@ def test_post_create_environment_with_existing_branch(setup):
     mock_env.port = 3003
     mock_env.ttyd_port = 7603
     payload = {"name": "my-feature", "from_branch": "main", "existing_branch": "feature/my-feature"}
-    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up, \
-         patch("forsa_dev.dashboard.server.getpass") as mock_getpass:
-        mock_getpass.getuser.return_value = TEST_USER
+    with patch("forsa_dev.dashboard.server.up_env", return_value=mock_env) as mock_up:
         app = create_app(user_configs)
         client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
         response = client.post("/api/environments", json=payload)
     assert response.status_code == 200
     mock_up.assert_called_once_with(
@@ -406,3 +285,197 @@ def test_post_create_environment_with_existing_branch(setup):
         data_dir=None,
         existing_branch="feature/my-feature",
     )
+
+
+# --- POST /api/environments/{owner}/{name}/serve ---
+
+
+def test_post_serve_calls_serve_env(setup):
+    user_configs, cfg, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.serve_env") as mock_serve:
+        response = client.post(f"/api/environments/{TEST_USER}/ticket-42/serve")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    mock_serve.assert_called_once_with(cfg, TEST_USER, "ticket-42")
+
+
+def test_post_serve_unknown_owner_returns_404(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    response = client.post("/api/environments/nobody/ticket-42/serve")
+    assert response.status_code == 404
+
+
+def test_post_serve_404_when_not_found(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.serve_env", side_effect=FileNotFoundError()):
+        response = client.post(f"/api/environments/{TEST_USER}/nonexistent/serve")
+    assert response.status_code == 404
+
+
+def test_post_serve_500_on_runtime_error(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.serve_env", side_effect=RuntimeError("compose failed")):
+        response = client.post(f"/api/environments/{TEST_USER}/ticket-42/serve")
+    assert response.status_code == 500
+
+
+# --- POST /api/environments/{owner}/{name}/stop ---
+
+
+def test_post_stop_calls_stop_env(setup):
+    user_configs, cfg, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.stop_env") as mock_stop:
+        response = client.post(f"/api/environments/{TEST_USER}/ticket-42/stop")
+    assert response.status_code == 200
+    mock_stop.assert_called_once_with(cfg, TEST_USER, "ticket-42")
+
+
+def test_post_stop_404_when_not_found(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.stop_env", side_effect=FileNotFoundError()):
+        response = client.post(f"/api/environments/{TEST_USER}/nonexistent/stop")
+    assert response.status_code == 404
+
+
+def test_post_stop_500_on_runtime_error(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.stop_env", side_effect=RuntimeError("compose failed")):
+        response = client.post(f"/api/environments/{TEST_USER}/ticket-42/stop")
+    assert response.status_code == 500
+
+
+# --- POST /api/environments/{owner}/{name}/restart ---
+
+
+def test_post_restart_calls_restart_env(setup):
+    user_configs, cfg, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.restart_env") as mock_restart:
+        response = client.post(f"/api/environments/{TEST_USER}/ticket-42/restart")
+    assert response.status_code == 200
+    mock_restart.assert_called_once_with(cfg, TEST_USER, "ticket-42")
+
+
+def test_post_restart_404_when_not_found(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.restart_env", side_effect=FileNotFoundError()):
+        response = client.post(f"/api/environments/{TEST_USER}/nonexistent/restart")
+    assert response.status_code == 404
+
+
+def test_post_restart_500_on_runtime_error(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.restart_env", side_effect=RuntimeError("compose failed")):
+        response = client.post(f"/api/environments/{TEST_USER}/ticket-42/restart")
+    assert response.status_code == 500
+
+
+# --- DELETE /api/environments/{owner}/{name} ---
+
+
+def test_delete_environment_calls_down_env(setup):
+    user_configs, cfg, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.down_env") as mock_down:
+        response = client.delete(f"/api/environments/{TEST_USER}/ticket-42")
+    assert response.status_code == 200
+    mock_down.assert_called_once_with(cfg, TEST_USER, "ticket-42", force=False)
+
+
+def test_delete_environment_force_param(setup):
+    user_configs, cfg, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.down_env") as mock_down:
+        response = client.delete(f"/api/environments/{TEST_USER}/ticket-42?force=true")
+    assert response.status_code == 200
+    mock_down.assert_called_once_with(cfg, TEST_USER, "ticket-42", force=True)
+
+
+def test_delete_environment_404_when_not_found(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.down_env", side_effect=FileNotFoundError()):
+        response = client.delete(f"/api/environments/{TEST_USER}/nonexistent")
+    assert response.status_code == 404
+
+
+def test_delete_environment_409_on_unpushed_branch(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    with patch("forsa_dev.dashboard.server.down_env", side_effect=RuntimeError("not been pushed")):
+        response = client.delete(f"/api/environments/{TEST_USER}/ticket-42")
+    assert response.status_code == 409
+
+
+# --- GET /api/config ---
+
+
+def test_get_config_returns_cookie_users_data_dir(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    response = client.get("/api/config")
+    assert response.status_code == 200
+    assert response.json() == {"data_dir": "/data/dev"}
+
+
+# --- GET /api/branches ---
+
+
+def test_get_branches_returns_list(setup):
+    user_configs, _, _ = setup
+    with patch("forsa_dev.dashboard.server.git.list_branches", return_value=["feature-a", "feature-b"]):
+        app = create_app(user_configs)
+        client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
+        response = client.get("/api/branches")
+    assert response.status_code == 200
+    assert response.json() == {"branches": ["feature-a", "feature-b"]}
+
+
+def test_get_branches_500_on_runtime_error(setup):
+    user_configs, _, _ = setup
+    with patch("forsa_dev.dashboard.server.git.list_branches", side_effect=RuntimeError("git failed")):
+        app = create_app(user_configs)
+        client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
+        response = client.get("/api/branches")
+    assert response.status_code == 500
