@@ -52,6 +52,41 @@ def setup(tmp_path):
 # --- GET /api/users ---
 
 
+def test_create_app_rejects_mismatched_state_dirs(tmp_path):
+    cfg1 = Config(
+        repo=tmp_path, worktree_dir=tmp_path, data_dir=Path("/data/dev"),
+        state_dir=tmp_path / "state-a", base_url="localhost",
+        docker_image="forsa:latest", gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+    )
+    cfg2 = Config(
+        repo=tmp_path, worktree_dir=tmp_path, data_dir=Path("/data/dev"),
+        state_dir=tmp_path / "state-b", base_url="localhost",
+        docker_image="forsa:latest", gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+    )
+    with pytest.raises(ValueError, match="state_dir"):
+        create_app({"alice": cfg1, "bob": cfg2})
+
+
+def test_create_app_rejects_mismatched_base_urls(tmp_path):
+    state_dir = tmp_path / "state"
+    cfg1 = Config(
+        repo=tmp_path, worktree_dir=tmp_path, data_dir=Path("/data/dev"),
+        state_dir=state_dir, base_url="host-a.ts.net",
+        docker_image="forsa:latest", gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+    )
+    cfg2 = Config(
+        repo=tmp_path, worktree_dir=tmp_path, data_dir=Path("/data/dev"),
+        state_dir=state_dir, base_url="host-b.ts.net",
+        docker_image="forsa:latest", gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+    )
+    with pytest.raises(ValueError, match="base_url"):
+        create_app({"alice": cfg1, "bob": cfg2})
+
+
 def test_get_users_returns_configured_users(setup):
     user_configs, _, _ = setup
     app = create_app(user_configs)

@@ -53,7 +53,11 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
     if len(state_dirs) > 1:
         raise ValueError(f"All users must share the same state_dir, got: {state_dirs}")
     state_dir = state_dirs.pop()
-    base_url = next(iter(user_configs.values())).base_url
+
+    base_urls = {cfg.base_url for cfg in user_configs.values()}
+    if len(base_urls) > 1:
+        raise ValueError(f"All users must share the same base_url, got: {base_urls}")
+    base_url = base_urls.pop()
 
     app = FastAPI()
 
