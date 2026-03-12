@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from forsa_dev.config import Config
-from forsa_dev.dashboard.server import create_app
+from forsa_dev.config import Config, save_config
+from forsa_dev.dashboard.server import create_app, discover_users
 from forsa_dev.state import Environment, save_state
 
 TEST_USER = "testuser"
@@ -479,3 +479,58 @@ def test_get_branches_500_on_runtime_error(setup):
         client.cookies.set("forsa_user", TEST_USER)
         response = client.get("/api/branches")
     assert response.status_code == 500
+
+
+# --- discover_users ---
+
+
+def test_discover_users_loads_configs(tmp_path, monkeypatch):
+    home = tmp_path / "home" / "alice"
+    config_path = home / ".config" / "forsa" / "config.toml"
+    config_path.parent.mkdir(parents=True)
+
+    cfg = Config(
+        repo=tmp_path / "repo", worktree_dir=tmp_path / "wt",
+        data_dir=Path("/data/dev"), state_dir=tmp_path / "state",
+        base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+    )
+    save_config(cfg, config_path)
+
+    mock_group = MagicMock()
+    mock_group.gr_mem = ["alice"]
+    monkeypatch.setattr("forsa_dev.dashboard.server.grp.getgrnam", lambda name: mock_group)
+
+    mock_pw = MagicMock()
+    mock_pw.pw_dir = str(home)
+    monkeypatch.setattr("forsa_dev.dashboard.server.pwd.getpwnam", lambda name: mock_pw)
+
+    result = discover_users()
+    assert "alice" in result
+    assert result["alice"].base_url == "localhost"
+
+
+def test_discover_users_skips_missing_config(tmp_path, monkeypatch):
+    home = tmp_path / "home" / "bob"
+    home.mkdir(parents=True)
+
+    mock_group = MagicMock()
+    mock_group.gr_mem = ["bob"]
+    monkeypatch.setattr("forsa_dev.dashboard.server.grp.getgrnam", lambda name: mock_group)
+
+    mock_pw = MagicMock()
+    mock_pw.pw_dir = str(home)
+    monkeypatch.setattr("forsa_dev.dashboard.server.pwd.getpwnam", lambda name: mock_pw)
+
+    result = discover_users()
+    assert "bob" not in result
+
+
+def test_discover_users_returns_empty_when_group_missing(monkeypatch):
+    monkeypatch.setattr(
+        "forsa_dev.dashboard.server.grp.getgrnam",
+        MagicMock(side_effect=KeyError("forsa-devs")),
+    )
+    result = discover_users()
+    assert result == {}

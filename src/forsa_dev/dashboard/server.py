@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import grp
+import pwd
 from pathlib import Path
 from typing import Any
 
@@ -11,10 +13,28 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from forsa_dev import git, tmux, ttyd
-from forsa_dev.config import Config
+from forsa_dev.config import Config, load_config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
 from forsa_dev.operations import compose_cmd, down_env, restart_env, serve_env, stop_env, up_env
 from forsa_dev.state import list_states, load_state
+
+
+def discover_users() -> dict[str, Config]:
+    """Find all forsa-devs group members and load their configs."""
+    try:
+        group = grp.getgrnam("forsa-devs")
+    except KeyError:
+        return {}
+    configs: dict[str, Config] = {}
+    for username in group.gr_mem:
+        try:
+            user_info = pwd.getpwnam(username)
+            config_path = Path(user_info.pw_dir) / ".config" / "forsa" / "config.toml"
+            if config_path.exists():
+                configs[username] = load_config(config_path)
+        except (KeyError, FileNotFoundError):
+            continue
+    return configs
 
 
 class CreateEnvRequest(BaseModel):
