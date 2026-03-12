@@ -192,17 +192,19 @@ def attach(
 
 @app.command()
 def dashboard(
-    config: ConfigOption = None,
     port: Annotated[int | None, typer.Option("--port", help="Override dashboard port.")] = None,
 ):
     """Start the web dashboard."""
     import uvicorn
 
-    from forsa_dev.dashboard.server import create_app
+    from forsa_dev.dashboard.server import create_app, discover_users
 
-    cfg = _load(config)
-    actual_port = port if port is not None else cfg.dashboard_port
-    app_instance = create_app(cfg)
+    user_configs = discover_users()
+    if not user_configs:
+        typer.echo("Error: no users found in forsa-devs group (or no configs exist).", err=True)
+        raise typer.Exit(1)
+    actual_port = port if port is not None else 8080
+    app_instance = create_app(user_configs)
     uvicorn.run(app_instance, host="0.0.0.0", port=actual_port)
 
 

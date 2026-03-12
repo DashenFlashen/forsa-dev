@@ -129,7 +129,9 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
         return {"branches": branches}
 
     @app.post("/api/environments")
-    def post_create_environment(body: CreateEnvRequest, user: str = Depends(get_user)) -> dict[str, Any]:
+    def post_create_environment(
+        body: CreateEnvRequest, user: str = Depends(get_user),
+    ) -> dict[str, Any]:
         cfg = user_configs[user]
         data_dir = Path(body.data_dir) if body.data_dir else None
         try:
@@ -180,7 +182,9 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
         return {"status": "ok"}
 
     @app.delete("/api/environments/{owner}/{name}")
-    def delete_environment(owner: str, name: str, force: bool = False, _user: str = Depends(get_user)) -> dict[str, str]:
+    def delete_environment(
+        owner: str, name: str, force: bool = False, _user: str = Depends(get_user),
+    ) -> dict[str, str]:
         cfg = _get_owner_cfg(owner)
         try:
             down_env(cfg, owner, name, force=force)

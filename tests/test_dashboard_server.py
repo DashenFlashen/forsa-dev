@@ -394,7 +394,9 @@ def test_post_restart_500_on_runtime_error(setup):
     app = create_app(user_configs)
     client = TestClient(app)
     client.cookies.set("forsa_user", TEST_USER)
-    with patch("forsa_dev.dashboard.server.restart_env", side_effect=RuntimeError("compose failed")):
+    with patch(
+        "forsa_dev.dashboard.server.restart_env", side_effect=RuntimeError("compose failed"),
+    ):
         response = client.post(f"/api/environments/{TEST_USER}/ticket-42/restart")
     assert response.status_code == 500
 
@@ -462,7 +464,10 @@ def test_get_config_returns_cookie_users_data_dir(setup):
 
 def test_get_branches_returns_list(setup):
     user_configs, _, _ = setup
-    with patch("forsa_dev.dashboard.server.git.list_branches", return_value=["feature-a", "feature-b"]):
+    with patch(
+        "forsa_dev.dashboard.server.git.list_branches",
+        return_value=["feature-a", "feature-b"],
+    ):
         app = create_app(user_configs)
         client = TestClient(app)
         client.cookies.set("forsa_user", TEST_USER)
@@ -473,7 +478,10 @@ def test_get_branches_returns_list(setup):
 
 def test_get_branches_500_on_runtime_error(setup):
     user_configs, _, _ = setup
-    with patch("forsa_dev.dashboard.server.git.list_branches", side_effect=RuntimeError("git failed")):
+    with patch(
+        "forsa_dev.dashboard.server.git.list_branches",
+        side_effect=RuntimeError("git failed"),
+    ):
         app = create_app(user_configs)
         client = TestClient(app)
         client.cookies.set("forsa_user", TEST_USER)
