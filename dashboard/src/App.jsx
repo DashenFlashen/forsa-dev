@@ -155,10 +155,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-950">
       <header className="border-b border-gray-800 bg-gray-900">
-        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center gap-3">
+        <div className="mx-auto max-w-7xl px-4 py-3 lg:px-6 lg:py-4 flex items-center gap-3">
           <span className="text-lg font-bold tracking-tight text-gray-100">forsa-dev</span>
           {health && (
-            <span className="text-xs text-gray-500 font-mono">
+            <span className="hidden text-xs text-gray-500 font-mono lg:inline">
               {host}
             </span>
           )}
@@ -176,7 +176,7 @@ export default function App() {
         </div>
       </header>
       <ErrorToast message={error} onDismiss={() => setError(null)} />
-      <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+      <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6 lg:py-6 space-y-6">
         <HealthPanel health={health} />
         <CreateEnvironment onCreate={handleCreate} defaultDataDir={defaultDataDir} />
         <ImportBranch onCreate={handleCreate} defaultDataDir={defaultDataDir} />
@@ -200,7 +200,7 @@ export default function App() {
         </div>
         {/* Mobile: full-screen terminal overlay */}
         {selectedEnv && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-gray-950 lg:hidden">
+          <div className="fixed inset-x-0 top-0 z-50 flex h-dvh flex-col bg-gray-950 lg:hidden">
             <TerminalView env={selectedEnv} host={host} onClose={handleCloseTerminal} />
           </div>
         )}

@@ -9,11 +9,11 @@ export default function TerminalView({ env, host, onClose }) {
 
   return (
     <div className="flex h-full w-full flex-col bg-gray-950">
-      <div className="flex items-center gap-3 border-b border-gray-800 bg-gray-900 px-4 py-2.5 shrink-0">
-        <Terminal className="h-4 w-4 shrink-0 text-gray-500" />
-        <span className="font-mono text-sm font-medium text-gray-100">{env.name}</span>
-        <StatusBadge status={env.status.server} />
-        <div className="flex gap-1 ml-2">
+      <div className="flex items-center gap-2 border-b border-gray-800 bg-gray-900 px-2 py-1.5 lg:gap-3 lg:px-4 lg:py-2.5 shrink-0">
+        <Terminal className="hidden h-4 w-4 shrink-0 text-gray-500 lg:block" />
+        <span className="hidden font-mono text-sm font-medium text-gray-100 lg:inline">{env.name}</span>
+        <span className="hidden lg:inline"><StatusBadge status={env.status.server} /></span>
+        <div className="flex gap-1">
           {['terminal', 'logs'].map((t) => (
             <button
               key={t}
@@ -41,7 +41,7 @@ export default function TerminalView({ env, host, onClose }) {
         </a>
         <button
           onClick={onClose}
-          className="rounded p-1 text-gray-500 hover:bg-gray-800 hover:text-gray-200 transition-colors"
+          className="rounded p-2 text-gray-500 hover:bg-gray-800 hover:text-gray-200 transition-colors lg:p-1"
           aria-label="Close terminal"
         >
           <X className="h-4 w-4" />

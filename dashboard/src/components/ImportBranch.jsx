@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Download, RefreshCw } from 'lucide-react'
+import CollapsibleSection from './CollapsibleSection'
 
 const NAME_RE = /^[a-z0-9][a-z0-9_-]*$/
 
@@ -14,6 +15,7 @@ export default function ImportBranch({ onCreate, defaultDataDir }) {
   const [dataDir, setDataDir] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingBranches, setLoadingBranches] = useState(true)
+  const [showOptions, setShowOptions] = useState(false)
 
   useEffect(() => {
     fetch('/api/branches')
@@ -48,10 +50,7 @@ export default function ImportBranch({ onCreate, defaultDataDir }) {
   const nameValid = NAME_RE.test(name)
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900 px-5 py-4">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-        Import Branch
-      </h2>
+    <CollapsibleSection title="Import Branch">
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-2">
           <select
@@ -87,17 +86,27 @@ export default function ImportBranch({ onCreate, defaultDataDir }) {
             {loading ? 'Importing…' : 'Import'}
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500 whitespace-nowrap w-16">Data dir</label>
-          <input
-            type="text"
-            value={dataDir}
-            onChange={(e) => setDataDir(e.target.value)}
-            placeholder="/data/dev"
-            className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm font-mono text-gray-300 placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-          />
-        </div>
+        {showOptions ? (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 whitespace-nowrap w-16">Data dir</label>
+            <input
+              type="text"
+              value={dataDir}
+              onChange={(e) => setDataDir(e.target.value)}
+              placeholder="/data/dev"
+              className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm font-mono text-gray-300 placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowOptions(true)}
+            className="self-start text-xs text-gray-500 hover:text-gray-400"
+          >
+            Options…
+          </button>
+        )}
       </form>
-    </div>
+    </CollapsibleSection>
   )
 }

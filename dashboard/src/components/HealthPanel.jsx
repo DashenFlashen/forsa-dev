@@ -1,3 +1,5 @@
+import CollapsibleSection from './CollapsibleSection'
+
 function Gauge({ label, value, max, unit }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
   const color =
@@ -27,15 +29,12 @@ function Gauge({ label, value, max, unit }) {
 export default function HealthPanel({ health }) {
   if (!health) return null
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900 px-5 py-4">
-      <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-        System Health
-      </h2>
+    <CollapsibleSection title="System Health">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Gauge label={`CPU (${health.cpu_count} cores)`} value={health.cpu_percent} max={100} unit="%" />
         <Gauge label="RAM" value={health.ram_used_gb} max={health.ram_total_gb} unit="GB" />
         <Gauge label="Disk" value={health.disk_used_gb} max={health.disk_total_gb} unit="GB" />
       </div>
-    </div>
+    </CollapsibleSection>
   )
 }

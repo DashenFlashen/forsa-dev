@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Plus, RefreshCw } from 'lucide-react'
+import CollapsibleSection from './CollapsibleSection'
 
 export default function CreateEnvironment({ onCreate, defaultDataDir }) {
   const [name, setName] = useState('')
   const [dataDir, setDataDir] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showOptions, setShowOptions] = useState(false)
 
   useEffect(() => {
     if (defaultDataDir && !dataDir) setDataDir(defaultDataDir)
@@ -23,10 +25,7 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
   }
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900 px-5 py-4">
-      <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-        New Environment
-      </h2>
+    <CollapsibleSection title="New Environment">
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-2">
           <input
@@ -49,17 +48,27 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
             {loading ? 'Creating…' : 'Create'}
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-500 whitespace-nowrap w-16">Data dir</label>
-          <input
-            type="text"
-            value={dataDir}
-            onChange={(e) => setDataDir(e.target.value)}
-            placeholder="/data/dev"
-            className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm font-mono text-gray-300 placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-          />
-        </div>
+        {showOptions ? (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 whitespace-nowrap w-16">Data dir</label>
+            <input
+              type="text"
+              value={dataDir}
+              onChange={(e) => setDataDir(e.target.value)}
+              placeholder="/data/dev"
+              className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm font-mono text-gray-300 placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowOptions(true)}
+            className="self-start text-xs text-gray-500 hover:text-gray-400"
+          >
+            Options…
+          </button>
+        )}
       </form>
-    </div>
+    </CollapsibleSection>
   )
 }
