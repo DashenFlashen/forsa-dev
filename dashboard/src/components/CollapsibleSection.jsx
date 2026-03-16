@@ -20,7 +20,7 @@ export default function CollapsibleSection({ title, children }) {
       <h2 className="mb-3 hidden text-xs font-semibold uppercase tracking-wider text-gray-500 lg:block">
         {title}
       </h2>
-      <div className={`${open ? '' : 'hidden'} lg:!block`}>
+      <div className={`${open ? 'mt-3' : 'hidden'} lg:!block`}>
         {children}
       </div>
     </div>

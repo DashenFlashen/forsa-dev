@@ -1,45 +1,12 @@
-import { useState } from 'react'
 import { Terminal, Trash2 } from 'lucide-react'
 import ActionButtons from './ActionButtons'
 import ConfirmModal from './ConfirmModal'
 import StatusBadge from './StatusBadge'
-
-function UserInitials({ user }) {
-  const initials = user
-    .split(/[-_\s]/)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
-  return (
-    <span
-      title={user}
-      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-700 text-xs font-medium text-gray-300"
-    >
-      {initials}
-    </span>
-  )
-}
+import UserInitials from './UserInitials'
+import useDeleteConfirmation from '../hooks/useDeleteConfirmation'
 
 export default function EnvironmentRow({ env, onAction, loadingAction, onSelect, isSelected, onDelete, loadingDelete }) {
-  const [confirmDelete, setConfirmDelete] = useState(null) // null | 'normal' | 'force'
-
-  const handleDeleteClick = (e) => {
-    e.stopPropagation()
-    setConfirmDelete('normal')
-  }
-
-  const handleConfirmDelete = async () => {
-    const force = confirmDelete === 'force'
-    setConfirmDelete(null)
-    try {
-      await onDelete(env.user, env.name, force)
-    } catch (e) {
-      if (e.message.includes('409')) {
-        setConfirmDelete('force')
-      }
-    }
-  }
+  const { confirmDelete, handleDeleteClick, handleConfirmDelete, cancelDelete } = useDeleteConfirmation(onDelete, env)
 
   const branchDiffers = env.branch !== env.name
   const ttydAlive = env.status.ttyd === 'alive'
@@ -121,7 +88,7 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
           confirmLabel="Delete"
           danger
           onConfirm={handleConfirmDelete}
-          onCancel={() => setConfirmDelete(null)}
+          onCancel={cancelDelete}
         />
       )}
       {confirmDelete === 'force' && (
@@ -131,7 +98,7 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
           confirmLabel="Force delete"
           danger
           onConfirm={handleConfirmDelete}
-          onCancel={() => setConfirmDelete(null)}
+          onCancel={cancelDelete}
         />
       )}
     </>

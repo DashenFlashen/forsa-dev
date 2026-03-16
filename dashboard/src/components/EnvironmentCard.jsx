@@ -1,45 +1,12 @@
-import { useState } from 'react'
 import { Terminal, Trash2 } from 'lucide-react'
 import ActionButtons from './ActionButtons'
 import ConfirmModal from './ConfirmModal'
 import StatusBadge from './StatusBadge'
-
-function UserInitials({ user }) {
-  const initials = user
-    .split(/[-_\s]/)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
-  return (
-    <span
-      title={user}
-      className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-700 text-xs font-medium text-gray-300"
-    >
-      {initials}
-    </span>
-  )
-}
+import UserInitials from './UserInitials'
+import useDeleteConfirmation from '../hooks/useDeleteConfirmation'
 
 export default function EnvironmentCard({ env, onAction, loadingAction, onSelect, isSelected, onDelete, loadingDelete }) {
-  const [confirmDelete, setConfirmDelete] = useState(null)
-
-  const handleDeleteClick = (e) => {
-    e.stopPropagation()
-    setConfirmDelete('normal')
-  }
-
-  const handleConfirmDelete = async () => {
-    const force = confirmDelete === 'force'
-    setConfirmDelete(null)
-    try {
-      await onDelete(env.user, env.name, force)
-    } catch (e) {
-      if (e.message.includes('409')) {
-        setConfirmDelete('force')
-      }
-    }
-  }
+  const { confirmDelete, handleDeleteClick, handleConfirmDelete, cancelDelete } = useDeleteConfirmation(onDelete, env)
 
   const branchDiffers = env.branch !== env.name
   const ttydAlive = env.status.ttyd === 'alive'
@@ -59,7 +26,7 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
         {/* Row 1: name + user */}
         <div className="flex items-center justify-between">
           <span className="font-mono text-sm font-medium text-gray-100">{env.name}</span>
-          <UserInitials user={env.user} />
+          <UserInitials user={env.user} className="h-7 w-7" />
         </div>
 
         {/* Row 2: branch (if differs) */}
@@ -77,7 +44,7 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
             href={env.url}
             target="_blank"
             rel="noreferrer"
-            className="font-mono text-sm text-blue-400"
+            className="font-mono text-sm text-blue-400 active:text-blue-300"
             onClick={(e) => e.stopPropagation()}
           >
             :{env.port}
@@ -92,6 +59,7 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
             onClick={() => onSelect(env)}
             disabled={!terminalReady}
             title={!ttydAlive ? 'Terminal not available' : !terminalReady ? 'Terminal starting…' : 'Open terminal'}
+            aria-label={`Open terminal for ${env.name}`}
             className={`rounded-md p-2.5 transition-colors ${
               terminalReady
                 ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
@@ -104,6 +72,7 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
             onClick={handleDeleteClick}
             disabled={loadingDelete}
             title="Delete environment"
+            aria-label={`Delete ${env.name}`}
             className="rounded-md p-2.5 text-gray-500 transition-colors hover:bg-red-900/40 hover:text-red-400 disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" />
@@ -118,7 +87,7 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
           confirmLabel="Delete"
           danger
           onConfirm={handleConfirmDelete}
-          onCancel={() => setConfirmDelete(null)}
+          onCancel={cancelDelete}
         />
       )}
       {confirmDelete === 'force' && (
@@ -128,7 +97,7 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
           confirmLabel="Force delete"
           danger
           onConfirm={handleConfirmDelete}
-          onCancel={() => setConfirmDelete(null)}
+          onCancel={cancelDelete}
         />
       )}
     </>
