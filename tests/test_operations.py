@@ -1,4 +1,5 @@
 import getpass
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -140,7 +141,7 @@ def test_up_env_with_claude_passes_command_to_tmux(up_cfg):
         up_env(cfg, USER, "new-feature", with_claude=True)
     assert mock_create.call_args.kwargs["command"] is not None
     assert "claude" in mock_create.call_args.kwargs["command"]
-    assert "zsh" in mock_create.call_args.kwargs["command"]
+    assert os.environ.get("SHELL", "sh") in mock_create.call_args.kwargs["command"]
 
 
 def test_up_env_raises_if_already_exists(cfg_and_env):
