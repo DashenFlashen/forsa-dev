@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 from forsa_dev.agents import AGENTS, agent_status, ensure_agents
-
 
 TTYD_PORTS = {"claude-root": 7698, "claude-forsa-dev": 7699}
 
@@ -49,7 +48,7 @@ def test_ensure_agents_starts_ttyd_if_port_not_open():
         mock_ttyd.ttyd_port_is_open.return_value = False
         mock_ttyd.start_ttyd.return_value = 99999
 
-        pids = ensure_agents(TTYD_PORTS)
+        ensure_agents(TTYD_PORTS)
 
         mock_tmux.create_session.assert_not_called()
         assert mock_ttyd.start_ttyd.call_count == 2

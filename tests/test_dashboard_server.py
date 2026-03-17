@@ -642,10 +642,13 @@ def test_get_agents_returns_status_for_anders(tmp_path):
     )
     user_configs = {"anders": cfg}
     mock_status = [
-        {"name": "root-claude", "label": "Root Claude", "description": "General purpose",
-         "cwd": "/home/anders", "ttyd_port": 7698, "tmux": "detached", "ttyd": "alive"},
-        {"name": "forsa-dev-claude", "label": "forsa-dev Claude", "description": "Dashboard & CLI",
-         "cwd": "/home/anders/repos/forsa-dev", "ttyd_port": 7699, "tmux": "detached", "ttyd": "alive"},
+        {"name": "root-claude", "label": "Root Claude",
+         "description": "General purpose", "cwd": "/home/anders",
+         "ttyd_port": 7698, "tmux": "detached", "ttyd": "alive"},
+        {"name": "forsa-dev-claude", "label": "forsa-dev Claude",
+         "description": "Dashboard & CLI",
+         "cwd": "/home/anders/repos/forsa-dev",
+         "ttyd_port": 7699, "tmux": "detached", "ttyd": "alive"},
     ]
     with patch("forsa_dev.dashboard.server.agents") as mock_agents:
         mock_agents.agent_status.return_value = mock_status
