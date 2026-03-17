@@ -180,28 +180,25 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6 lg:py-6 space-y-6">
         <HealthPanel health={health} />
         <CreateEnvironment onCreate={handleCreate} defaultDataDir={defaultDataDir} />
-        <div className={`flex gap-4 transition-all duration-300 ${selectedEnv ? 'lg:flex-row' : ''}`}>
-          <div className={`transition-all duration-300 ${selectedEnv ? 'lg:w-1/3' : 'w-full'}`}>
-            <EnvironmentTable
-              envs={envs}
-              onAction={handleAction}
-              loadingActions={loadingActions}
-              onSelect={handleSelect}
-              selectedEnv={selectedEnv}
-              onDelete={handleDelete}
-              loadingDeletes={loadingDeletes}
-            />
-          </div>
-          {selectedEnv && (
-            <div className="hidden lg:flex flex-1 h-[600px] rounded-lg border border-gray-800 overflow-hidden">
-              <TerminalView env={selectedEnv} host={host} onClose={handleCloseTerminal} />
-            </div>
-          )}
-        </div>
-        {/* Mobile: full-screen terminal overlay */}
+        <EnvironmentTable
+          envs={envs}
+          onAction={handleAction}
+          loadingActions={loadingActions}
+          onSelect={handleSelect}
+          selectedEnv={selectedEnv}
+          onDelete={handleDelete}
+          loadingDeletes={loadingDeletes}
+        />
+        {/* Fullscreen terminal overlay — same for mobile and desktop */}
         {selectedEnv && (
-          <div className="fixed inset-x-0 top-0 z-50 flex h-dvh flex-col bg-gray-950 lg:hidden">
-            <TerminalView env={selectedEnv} host={host} onClose={handleCloseTerminal} />
+          <div className="fixed inset-0 z-50 flex flex-col bg-gray-950">
+            <TerminalView
+              env={selectedEnv}
+              host={host}
+              onClose={handleCloseTerminal}
+              onAction={handleAction}
+              loadingAction={loadingActions[`${selectedEnv.user}/${selectedEnv.name}`]}
+            />
           </div>
         )}
       </main>

@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { X, Terminal, ExternalLink } from 'lucide-react'
+import ActionButtons from './ActionButtons'
 import StatusBadge from './StatusBadge'
 import LogsView from './LogsView'
 
-export default function TerminalView({ env, host, onClose }) {
+export default function TerminalView({ env, host, onClose, onAction, loadingAction }) {
   const [tab, setTab] = useState('terminal')
   const src = env.ttyd_port ? `http://${host}:${env.ttyd_port}` : null
 
   return (
     <div className="flex h-full w-full flex-col bg-gray-950">
-      <div className="flex items-center gap-2 border-b border-gray-800 bg-gray-900 px-2 py-1.5 lg:gap-3 lg:px-4 lg:py-2.5 shrink-0">
+      <div className="flex items-center gap-2 border-b border-gray-800 bg-gray-900 px-3 py-2 lg:gap-3 lg:px-4 lg:py-2.5 shrink-0">
         <Terminal className="hidden h-4 w-4 shrink-0 text-gray-500 lg:block" />
-        <span className="hidden font-mono text-sm font-medium text-gray-100 lg:inline">{env.name}</span>
-        <span className="hidden lg:inline"><StatusBadge status={env.status.server} /></span>
+        <span className="font-mono text-sm font-medium text-gray-100 truncate">{env.name}</span>
+        <StatusBadge status={env.status.server} />
         <div className="flex gap-1">
           {['terminal', 'logs'].map((t) => (
             <button
@@ -28,6 +29,9 @@ export default function TerminalView({ env, host, onClose }) {
             </button>
           ))}
         </div>
+        <div className="hidden lg:flex items-center gap-1">
+          <ActionButtons env={env} onAction={onAction} loading={loadingAction} />
+        </div>
         <div className="flex-1" />
         <a
           href={env.url}
@@ -41,10 +45,10 @@ export default function TerminalView({ env, host, onClose }) {
         </a>
         <button
           onClick={onClose}
-          className="rounded p-2 text-gray-500 hover:bg-gray-800 hover:text-gray-200 transition-colors lg:p-1"
+          className="rounded p-2 text-gray-500 hover:bg-gray-800 hover:text-gray-200 transition-colors"
           aria-label="Close terminal"
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
