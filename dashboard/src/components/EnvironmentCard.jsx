@@ -17,10 +17,10 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
     <>
       <div
         onClick={() => onSelect(env)}
-        className={`rounded-lg border p-4 transition-colors ${
+        className={`rounded-lg border p-4 theme-transition theme-card-hover ${
           isSelected
             ? 'border-blue-500 bg-gray-900'
-            : 'border-gray-800 bg-gray-900/50 active:bg-gray-900'
+            : 'border-gray-700/60 theme-card-bg active:bg-gray-900'
         }`}
       >
         {/* Row 1: name + user */}

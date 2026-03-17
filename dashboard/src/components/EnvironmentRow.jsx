@@ -16,7 +16,7 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
   return (
     <>
       <tr
-        className={`border-t border-gray-800 cursor-pointer transition-colors hover:bg-gray-900/60 ${
+        className={`border-t border-gray-800 cursor-pointer theme-transition hover:bg-gray-900/60 ${
           isSelected
             ? 'bg-gray-900 border-l-2 border-l-blue-500'
             : 'border-l-2 border-l-transparent'

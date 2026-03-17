@@ -16,9 +16,9 @@ function Gauge({ label, value, max, unit }) {
           <span className="ml-2 text-gray-500">({pct}%)</span>
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-gray-700">
+      <div className="h-2 overflow-hidden rounded-full bg-gray-800">
         <div
-          className={`h-full rounded-full transition-all duration-700 ${color}`}
+          className={`h-full rounded-full transition-all duration-700 ${color} ${pct > 85 ? 'theme-gauge-glow-red' : pct > 60 ? 'theme-gauge-glow-yellow' : ''}`}
           style={{ width: `${pct}%` }}
         />
       </div>

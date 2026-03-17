@@ -158,7 +158,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-950">
-      <header className="border-b border-gray-800 bg-gray-900">
+      <header className="border-b border-gray-800 theme-header">
         <div className="mx-auto max-w-7xl px-4 py-3 lg:px-6 lg:py-4 flex items-center gap-3">
           <span className="text-lg font-bold tracking-tight text-gray-100">forsa-dev</span>
           {health && (

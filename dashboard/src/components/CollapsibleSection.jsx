@@ -5,7 +5,7 @@ export default function CollapsibleSection({ title, children }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900 px-5 py-4">
+    <div className="rounded-lg border border-gray-700/60 theme-section px-5 py-4">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center gap-2 lg:hidden"

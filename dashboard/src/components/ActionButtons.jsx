@@ -9,7 +9,7 @@ function ActionBtn({ icon: Icon, label, onClick, disabled, loading, colorClass }
       disabled={disabled}
       title={label}
       aria-label={label}
-      className={`rounded-md p-2.5 lg:p-2 transition-colors disabled:opacity-50 ${colorClass}`}
+      className={`rounded-md p-2.5 lg:p-2 transition-colors disabled:opacity-50 theme-btn-press ${colorClass}`}
     >
       {loading ? (
         <RefreshCw className="h-4 w-4 lg:h-4 lg:w-4 animate-spin" />

@@ -32,7 +32,7 @@ export default function UserPicker({ onSelect }) {
             <button
               key={u.name}
               onClick={() => onSelect(u.name)}
-              className="rounded-lg bg-gray-800 px-8 py-3 text-lg font-medium text-gray-100 transition-colors hover:bg-gray-700 capitalize"
+              className="rounded-lg bg-gray-800 px-8 py-3 text-lg font-medium text-gray-100 theme-transition theme-card-hover capitalize"
             >
               {u.name}
             </button>
