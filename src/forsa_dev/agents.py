@@ -11,7 +11,7 @@ AGENTS = [
         "description": "General purpose",
         "session": "claude-root",
         "cwd": Path.home(),
-        "command": "claude --effort max",
+        "command": "env -u CLAUDECODE claude --effort max",
     },
     {
         "name": "forsa-dev-claude",
@@ -19,7 +19,7 @@ AGENTS = [
         "description": "Dashboard & CLI",
         "session": "claude-forsa-dev",
         "cwd": Path.home() / "repos" / "forsa-dev",
-        "command": "claude --effort max",
+        "command": "env -u CLAUDECODE claude --effort max",
     },
 ]
 
