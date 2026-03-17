@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import CreateEnvironment from './components/CreateEnvironment'
-import ImportBranch from './components/ImportBranch'
 import EnvironmentTable from './components/EnvironmentTable'
 import ErrorToast from './components/ErrorToast'
 import HealthPanel from './components/HealthPanel'
@@ -181,7 +180,6 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6 lg:py-6 space-y-6">
         <HealthPanel health={health} />
         <CreateEnvironment onCreate={handleCreate} defaultDataDir={defaultDataDir} />
-        <ImportBranch onCreate={handleCreate} defaultDataDir={defaultDataDir} />
         <div className={`flex gap-4 transition-all duration-300 ${selectedEnv ? 'lg:flex-row' : ''}`}>
           <div className={`transition-all duration-300 ${selectedEnv ? 'lg:w-1/3' : 'w-full'}`}>
             <EnvironmentTable
