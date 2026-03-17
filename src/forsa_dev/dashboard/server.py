@@ -93,6 +93,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
                 "name": env.name,
                 "user": env.user,
                 "branch": env.branch,
+                "worktree": str(env.worktree),
                 "port": env.port,
                 "ttyd_port": env.ttyd_port,
                 "url": env.url or f"http://{base_url}:{env.port}",

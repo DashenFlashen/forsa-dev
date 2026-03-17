@@ -176,6 +176,22 @@ def test_get_environments_includes_ttyd_port(setup):
     assert "ttyd" in data[0]["status"]
 
 
+def test_get_environments_includes_worktree(setup):
+    user_configs, _, _ = setup
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.port_is_open", return_value=False), \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd:
+        mock_tmux.session_status.return_value = "active"
+        mock_ttyd.ttyd_is_alive.return_value = False
+        app = create_app(user_configs)
+        client = TestClient(app)
+        response = client.get("/api/environments")
+    assert response.status_code == 200
+    data = response.json()
+    assert "worktree" in data[0]
+    assert data[0]["worktree"].endswith("/worktrees/ticket-42")
+
+
 # --- GET /api/health ---
 
 
