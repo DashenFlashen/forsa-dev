@@ -6,7 +6,7 @@ Consolidated improvements to the forsa-dev dashboard covering UX, workflow, and 
 
 **Current:** Desktop shows the terminal in a side panel (`h-[600px]`, 1/3 + 2/3 split). Too small to work in.
 
-**Change:** Replace the side panel with a near-fullscreen overlay on desktop, matching the existing mobile behavior. The overlay covers the main content area but keeps the site header visible.
+**Change:** Replace the side panel with a fullscreen overlay on desktop, matching the existing mobile behavior. The overlay covers the entire viewport (`fixed inset-0`, same as the current mobile implementation) including the header. The close button is the escape hatch back to the dashboard.
 
 The terminal overlay header includes:
 - Environment name and status badge
@@ -17,8 +17,8 @@ The terminal overlay header includes:
 - Close button to return to the dashboard
 
 **Files affected:**
-- `App.jsx` — remove the desktop split layout (`lg:flex-row`, `lg:w-1/3`, `h-[600px]`), use the fullscreen overlay for all screen sizes
-- `TerminalView.jsx` — add action buttons and VSCode link to the header bar
+- `App.jsx` — remove the desktop split layout (`lg:flex-row`, `lg:w-1/3`, `h-[600px]`), unify both mobile and desktop to use the same fullscreen overlay. Pass `onAction` and `loadingActions` props through to `TerminalView`.
+- `TerminalView.jsx` — accept new `onAction`/`loadingActions` props, add action buttons and VSCode link to the header bar
 
 ## 2. Unified create environment form
 
@@ -32,9 +32,9 @@ The terminal overlay header includes:
 - Branch list is fetched once when the component mounts (same as current `ImportBranch`).
 
 **Files affected:**
-- Create new `CreateEnvironment.jsx` replacing both current components
+- Create new `CreateEnvironment.jsx` replacing both current components (branch list fetched internally, same as current `ImportBranch`)
 - Delete `ImportBranch.jsx`
-- `App.jsx` — remove `ImportBranch` import and usage, pass branch list data to unified component
+- `App.jsx` — remove `ImportBranch` import and usage
 
 ## 3. Button sizing
 
@@ -43,9 +43,9 @@ The terminal overlay header includes:
 **Change:** Increase desktop button sizes:
 - `ActionButtons.jsx` `ActionBtn`: change `lg:p-1.5` → `lg:p-2`, change `lg:h-3.5 lg:w-3.5` → `lg:h-4 lg:w-4`
 - `EnvironmentRow.jsx` terminal and delete buttons: change `p-1.5` → `p-2`, change `h-3.5 w-3.5` → `h-4 w-4`
-- Increase gap between buttons from `gap-1` to `gap-1.5`
+- `ActionButtons.jsx` line 27 and `EnvironmentRow.jsx` line 56: increase `gap-1` → `gap-1.5`
 
-Mobile sizes stay the same (already `p-2.5` and `h-4 w-4`).
+Mobile sizes stay the same — `EnvironmentCard.jsx` already uses `p-2.5` and `h-4 w-4`, no changes needed there.
 
 ## 4. VSCode "Open in editor" link
 
@@ -56,7 +56,7 @@ URI format: `vscode://vscode-remote/ssh-remote+{ssh_host}{worktree_path}`
 - `ssh_host` is derived from the dashboard's `base_url` config (or the browser's `window.location.hostname`)
 - `worktree_path` is already available in the environment state
 
-**Backend:** Add `worktree_path` to the environment JSON returned by `/api/environments` (currently not exposed).
+**Backend:** The `Environment` dataclass stores `worktree` as a `Path`, but `server.py` doesn't include it in the API response. Add it as `worktree` (matching the dataclass field name) to the environment JSON returned by `/api/environments`.
 
 **Frontend:** Render a VSCode icon link in:
 - `EnvironmentRow.jsx` actions column
@@ -66,21 +66,23 @@ Use `lucide-react`'s `Code2` or `ExternalLink` icon with a "VSCode" label/toolti
 
 **Note:** The `vscode://` URI scheme requires the Remote SSH extension and a matching SSH config entry on the user's local machine. This should be tested manually before relying on it.
 
-## 5. Lightweight CLI serve command
+## 5. Lightweight CLI run command
 
-**Change:** Add a `forsa-dev serve` command that starts a FORSA server from the current directory (or a specified path) without creating a worktree.
+**Note:** `forsa-dev serve` already exists (starts the Docker server for an existing environment). This new command is named `forsa-dev run` to avoid collision.
+
+**Change:** Add a `forsa-dev run` command that starts a FORSA server from the current directory (or a specified path) without creating a worktree.
 
 Behavior:
 - Allocates a port from the shared port range (same locking mechanism)
 - Generates `docker-compose.dev.yml` in the target directory
-- Runs `docker compose up`
-- Prints the URL
+- Runs `docker compose up` in the **foreground** — the port lock is held for the duration of the process via the open file descriptor, so no state file is needed and the port is automatically released on exit
+- Prints the URL before attaching to compose output
 
-This is for users (like Hanna) who work directly in the main repo checkout and just want to run the server. No tmux session, no ttyd, no dashboard integration.
+This is for users (like Hanna) who work directly in the main repo checkout and just want to run the server. No tmux session, no ttyd, no state file, no dashboard integration. Ctrl+C stops everything cleanly.
 
 **Files affected:**
-- `cli.py` — add `serve` subcommand
-- `operations.py` — extract compose generation and port allocation into a reusable function
+- `cli.py` — add `run` subcommand
+- `operations.py` — extract compose generation and port allocation into a reusable function that can be used by both `up_env()` and the new `run` command
 - `compose.py` — no changes needed (already generates from a directory path)
 
 ## 6. User visibility and access
@@ -110,8 +112,10 @@ f"{shell} -i -c 'claude --dangerously-skip-permissions --effort max || exec {she
 
 Hardcoded, not configurable.
 
+**Note:** This only affects environments created with `with_claude=True`. The dashboard always sets this, but CLI users need `--with-claude` to get a Claude session.
+
 **Files affected:**
-- `operations.py` line ~121
+- `operations.py` line 121
 
 ## Implementation order
 
@@ -123,4 +127,4 @@ Suggested order by dependency and risk:
 4. **Unified create form** (#2) — self-contained frontend refactor
 5. **Terminal overlay** (#1) — frontend layout change, touches `App.jsx` and `TerminalView.jsx`
 6. **VSCode link** (#4) — requires backend change (expose `worktree_path`) + frontend
-7. **CLI serve command** (#5) — new feature, requires backend refactoring
+7. **CLI run command** (#5) — new feature, requires backend refactoring
