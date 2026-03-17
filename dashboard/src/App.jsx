@@ -6,6 +6,7 @@ import ErrorToast from './components/ErrorToast'
 import HealthPanel from './components/HealthPanel'
 import TerminalView from './components/TerminalView'
 import UserPicker from './components/UserPicker'
+import UserInitials from './components/UserInitials'
 import useInterval from './hooks/useInterval'
 
 const ENV_POLL_MS = 3000
@@ -164,10 +165,9 @@ export default function App() {
               {host}
             </span>
           )}
-          <div className="ml-auto flex items-center gap-2 text-sm text-gray-400">
-            <span>
-              logged in as <span className="font-medium text-gray-200 capitalize">{user}</span>
-            </span>
+          <div className="ml-auto flex items-center gap-3 text-sm text-gray-400">
+            <UserInitials user={user} className="h-8 w-8 text-sm" />
+            <span className="font-medium text-gray-200 capitalize">{user}</span>
             <button
               onClick={handleSwitchUser}
               className="text-blue-400 hover:text-blue-300 hover:underline"
