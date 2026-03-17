@@ -118,7 +118,7 @@ def up_env(
 
     shell = os.environ.get("SHELL", "/bin/bash")
     command = (
-        f"{shell} -i -c 'claude --dangerously-skip-permissions || exec {shell}'"
+        f"{shell} -i -c 'claude --dangerously-skip-permissions --effort max || exec {shell}'"
         if with_claude else None
     )
     try:
