@@ -75,10 +75,10 @@ Use `lucide-react`'s `Code2` or `ExternalLink` icon with a "VSCode" label/toolti
 Behavior:
 - Allocates a port from the shared port range (same locking mechanism)
 - Generates `docker-compose.dev.yml` in the target directory
-- Runs `docker compose up` in the **foreground** — the port lock is held for the duration of the process via the open file descriptor, so no state file is needed and the port is automatically released on exit
+- Runs `docker compose up` in the **foreground** — a temporary state file (`local-run.json`) reserves the port so concurrent allocations see it as taken; the state file is cleaned up on exit
 - Prints the URL before attaching to compose output
 
-This is for users (like Hanna) who work directly in the main repo checkout and just want to run the server. No tmux session, no ttyd, no state file, no dashboard integration. Ctrl+C stops everything cleanly.
+This is for users (like Hanna) who work directly in the main repo checkout and just want to run the server. No tmux session, no ttyd, no dashboard integration. A temporary state file reserves the port during the run. Ctrl+C stops everything cleanly and removes the state file.
 
 **Files affected:**
 - `cli.py` — add `run` subcommand
