@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import AgentButtons from './components/AgentButtons'
 import CreateEnvironment from './components/CreateEnvironment'
 import EnvironmentTable from './components/EnvironmentTable'
 import ErrorToast from './components/ErrorToast'
@@ -48,6 +49,7 @@ export default function App() {
   const [loadingActions, setLoadingActions] = useState({})
   const [loadingDeletes, setLoadingDeletes] = useState({})
   const [selectedEnv, setSelectedEnv] = useState(null)
+  const [selectedAgent, setSelectedAgent] = useState(null)
 
   const handleSelectUser = useCallback((name) => {
     setCookie('forsa_user', name)
@@ -164,6 +166,7 @@ export default function App() {
               {host}
             </span>
           )}
+          <AgentButtons onSelectAgent={setSelectedAgent} />
           <div className="ml-auto flex items-center gap-3 text-sm text-gray-400">
             <UserInitials user={user} className="h-8 w-8 text-sm" />
             <span className="font-medium text-gray-200 capitalize">{user}</span>
@@ -198,6 +201,15 @@ export default function App() {
               onClose={handleCloseTerminal}
               onAction={handleAction}
               loadingAction={loadingActions[`${selectedEnv.user}/${selectedEnv.name}`]}
+            />
+          </div>
+        )}
+        {selectedAgent && (
+          <div className="fixed inset-0 z-50 flex flex-col bg-gray-950">
+            <TerminalView
+              agent={selectedAgent}
+              host={host}
+              onClose={() => setSelectedAgent(null)}
             />
           </div>
         )}
