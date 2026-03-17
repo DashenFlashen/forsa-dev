@@ -95,7 +95,7 @@ def test_load_config_without_ttyd_range_uses_defaults(tmp_path):
     )
     cfg = load_config(cfg_file)
     assert cfg.ttyd_port_range_start == 7600
-    assert cfg.ttyd_port_range_end == 7699
+    assert cfg.ttyd_port_range_end == 7697
 
 
 def test_config_ttyd_range_roundtrip(tmp_path):

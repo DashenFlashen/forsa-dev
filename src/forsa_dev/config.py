@@ -10,7 +10,7 @@ import tomli_w
 DEFAULT_CONFIG_PATH = Path.home() / ".config" / "forsa" / "config.toml"
 _DEFAULT_DASHBOARD_PORT = 8080
 _DEFAULT_TTYD_PORT_RANGE_START = 7600
-_DEFAULT_TTYD_PORT_RANGE_END = 7699
+_DEFAULT_TTYD_PORT_RANGE_END = 7697
 
 
 @dataclass(frozen=True)
