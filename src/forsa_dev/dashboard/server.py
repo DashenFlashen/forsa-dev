@@ -85,7 +85,10 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             status = check_status(
                 tmux_status=tmux_stat, served=env.url is not None, port_open=port_open
             )
-            ttyd_alive = ttyd.ttyd_is_alive(env.ttyd_pid) if env.ttyd_pid is not None else False
+            ttyd_alive = (
+                ttyd.ttyd_port_is_open(env.ttyd_port) if env.ttyd_port is not None
+                else False
+            )
             result.append({
                 "name": env.name,
                 "user": env.user,
