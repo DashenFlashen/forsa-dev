@@ -35,16 +35,29 @@ A React component rendered inside `TerminalView.jsx`, between the iframe and the
 
 ### WebSocket Communication
 
-The component opens its own WebSocket to `ws://{host}:{ttydPort}/ws` using ttyd's binary protocol:
+The component opens its own WebSocket to the ttyd port using ttyd's binary protocol. The protocol is derived from `window.location.protocol` (`ws://` for HTTP, `wss://` for HTTPS).
 
-1. **Connect** — open WebSocket to ttyd port
-2. **Handshake** — send JSON_DATA message: `{"columns": 0, "rows": 0}` (we don't need to size a terminal, just send input)
-3. **Send input** — for each virtual key press, send a binary message: `[INPUT_CMD_BYTE][utf8_payload]`
+**ttyd protocol constants (v1.7.4):**
+
+| Byte | Command |
+|------|---------|
+| `0x00` | INPUT — send user input to the terminal |
+| `0x01` | OUTPUT — terminal output (ignored by us) |
+| `0x02` | SET_WINDOW_TITLE |
+| `0x04` | SET_PREFERENCES |
+
+**Connection sequence:**
+
+1. **Connect** — open WebSocket to `ws://{host}:{ttydPort}/ws`
+2. **Handshake** — send a JSON text frame: `{"AuthToken":"","columns":0,"rows":0}`. Auth token is empty since ttyd is started without `--credential`.
+3. **Send input** — for each virtual key press, send a binary frame: `[0x00][utf8_payload]`
 4. **Ignore output** — discard all incoming messages (the iframe handles display)
 
 ttyd supports multiple simultaneous clients (default: unlimited), so this second connection coexists with the iframe's connection without conflict.
 
-**Lifecycle:** WebSocket opens when the component mounts (terminal view opens on mobile), closes on unmount.
+**Lifecycle:** WebSocket opens when the component mounts (terminal view opens on mobile), closes on unmount. On disconnect, the component attempts to reconnect with exponential backoff (1s, 2s, 4s, max 10s). Buttons are visually disabled while disconnected.
+
+**Constraint:** ttyd must NOT be started with `--check-origin` (`-O`), as the dashboard page is served from a different port than ttyd.
 
 ### Mobile Detection
 
@@ -83,7 +96,16 @@ PageUp/PageDown buttons handle scrolling. In tmux, PageUp automatically enters c
 - No custom ttyd index page
 - No backend changes
 
+## Native Soft Keyboard Coexistence
+
+Tapping the iframe may trigger the native soft keyboard (ttyd's xterm.js uses a hidden textarea for input capture). The virtual key bar and native keyboard can coexist — the user uses the native keyboard for typing text and the virtual bar for special keys. The native keyboard can be dismissed by tapping outside the iframe or pressing the phone's back gesture.
+
+## Key Repeat
+
+Long-pressing an arrow key triggers repeated sends (via `setInterval` while touch is held, ~100ms interval). This is important for scrolling through output and navigating prompts.
+
 ## Risks
 
 - **ttyd WebSocket protocol stability** — the binary protocol is undocumented. If ttyd changes it, the virtual keyboard breaks. Mitigated by: ttyd 1.7.4 is the installed version and unlikely to change without us noticing.
 - **Dual WebSocket connections** — could theoretically cause issues with ttyd's client tracking. Mitigated by: ttyd is designed for multiple clients.
+- **Viewport pressure** — in portrait mode with the native soft keyboard open, the terminal iframe will be small. Acceptable trade-off since the native keyboard is dismissible and the virtual bar is a single compact row.
