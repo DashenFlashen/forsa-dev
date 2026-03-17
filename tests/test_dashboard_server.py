@@ -109,9 +109,10 @@ def test_get_users_multiple_users(tmp_path):
         gurobi_lic=Path("/opt/gurobi/gurobi.lic"), port_range_start=3000, port_range_end=3099,
     )
     user_configs = {"anders": cfg1, "hanna": cfg2}
-    app = create_app(user_configs)
-    client = TestClient(app)
-    response = client.get("/api/users")
+    with patch("forsa_dev.dashboard.server.agents"):
+        app = create_app(user_configs)
+        client = TestClient(app)
+        response = client.get("/api/users")
     assert response.status_code == 200
     names = [u["name"] for u in response.json()]
     assert "anders" in names
@@ -615,3 +616,53 @@ def test_discover_users_returns_empty_when_group_missing(monkeypatch):
     )
     result = discover_users()
     assert result == {}
+
+
+# --- GET /api/agents ---
+
+
+def test_get_agents_returns_empty_for_non_anders_user(setup):
+    user_configs, _, _ = setup
+    with patch("forsa_dev.dashboard.server.agents") as mock_agents:
+        app = create_app(user_configs)
+        client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
+        response = client.get("/api/agents")
+    assert response.status_code == 200
+    assert response.json() == []
+    mock_agents.agent_status.assert_not_called()
+
+
+def test_get_agents_returns_status_for_anders(tmp_path):
+    state_dir = tmp_path / "state"
+    cfg = Config(
+        repo=tmp_path, worktree_dir=tmp_path, data_dir=Path("/data/dev"),
+        state_dir=state_dir, base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"), port_range_start=3000, port_range_end=3099,
+    )
+    user_configs = {"anders": cfg}
+    mock_status = [
+        {"name": "root-claude", "label": "Root Claude", "description": "General purpose",
+         "cwd": "/home/anders", "ttyd_port": 7698, "tmux": "detached", "ttyd": "alive"},
+        {"name": "forsa-dev-claude", "label": "forsa-dev Claude", "description": "Dashboard & CLI",
+         "cwd": "/home/anders/repos/forsa-dev", "ttyd_port": 7699, "tmux": "detached", "ttyd": "alive"},
+    ]
+    with patch("forsa_dev.dashboard.server.agents") as mock_agents:
+        mock_agents.agent_status.return_value = mock_status
+        app = create_app(user_configs)
+        client = TestClient(app)
+        client.cookies.set("forsa_user", "anders")
+        response = client.get("/api/agents")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert data[0]["name"] == "root-claude"
+
+
+def test_get_agents_no_auth_returns_empty(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.get("/api/agents")
+    assert response.status_code == 200
+    assert response.json() == []

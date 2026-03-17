@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from forsa_dev import git, tmux, ttyd
+from forsa_dev import agents, git, tmux, ttyd
 from forsa_dev.config import Config, load_config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
 from forsa_dev.operations import compose_cmd, down_env, restart_env, serve_env, stop_env, up_env
@@ -60,6 +60,13 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
     base_url = base_urls.pop()
 
     app = FastAPI()
+
+    agent_ttyd_ports = {"claude-root": 7698, "claude-forsa-dev": 7699}
+    if "anders" in user_configs:
+        try:
+            agents.ensure_agents(agent_ttyd_ports)
+        except Exception:
+            pass  # agent startup failure shouldn't block dashboard
 
     def get_user(forsa_user: str = Cookie(default=None)) -> str:
         if not forsa_user or forsa_user not in user_configs:
@@ -226,6 +233,12 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
                 await proc.wait()
 
         return StreamingResponse(generate(), media_type="text/event-stream")
+
+    @app.get("/api/agents")
+    def get_agents(forsa_user: str = Cookie(default=None)) -> list[dict[str, Any]]:
+        if forsa_user != "anders" or "anders" not in user_configs:
+            return []
+        return agents.agent_status(agent_ttyd_ports)
 
     # Serve built React app — mounted last so API routes take precedence
     static_dir = Path(__file__).parent / "static"
