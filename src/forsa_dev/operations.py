@@ -147,6 +147,51 @@ def up_env(
     return updated
 
 
+def run_local(cfg: Config, work_dir: Path, data_dir: Path | None = None) -> None:
+    """Run a FORSA server from an arbitrary directory. Foreground, no state file."""
+    # Allocate port under lock, write a temporary state file so concurrent
+    # allocations see this port as taken, then release the lock before
+    # running compose (which blocks indefinitely).
+    with allocate_ports(cfg.state_dir, (cfg.port_range_start, cfg.port_range_end)) as (port,):
+        compose_file = generate_compose(
+            worktree=work_dir,
+            user="local",
+            name="run",
+            port=port,
+            data_dir=data_dir or cfg.data_dir,
+            docker_image=cfg.docker_image,
+            gurobi_lic=cfg.gurobi_lic,
+        )
+        # Write temporary state so the port stays reserved after lock release
+        env = Environment(
+            name="run",
+            user="local",
+            branch="",
+            worktree=work_dir,
+            tmux_session="",
+            compose_file=compose_file,
+            port=port,
+            url=f"http://{cfg.base_url}:{port}",
+            created_at=datetime.now(tz=timezone.utc),
+            served_at=datetime.now(tz=timezone.utc),
+        )
+        save_state(env, cfg.state_dir)
+    # Lock is released — other allocations can proceed
+    try:
+        print(f"Serving at http://{cfg.base_url}:{port}")
+        print("Press Ctrl+C to stop.")
+        subprocess.run(
+            ["docker", "compose", "-p", "forsa-run", "-f", str(compose_file), "up"],
+            check=False,
+        )
+    finally:
+        subprocess.run(
+            ["docker", "compose", "-p", "forsa-run", "-f", str(compose_file), "down"],
+            check=False,
+        )
+        delete_state("local", "run", cfg.state_dir)
+
+
 def down_env(cfg: Config, user: str, name: str, force: bool = False) -> None:
     env = load_state(user, name, cfg.state_dir)
 

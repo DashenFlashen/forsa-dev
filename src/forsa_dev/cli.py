@@ -12,7 +12,15 @@ import typer
 from forsa_dev import tmux
 from forsa_dev.config import DEFAULT_CONFIG_PATH, Config, load_config, save_config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
-from forsa_dev.operations import compose_cmd, down_env, restart_env, serve_env, stop_env, up_env
+from forsa_dev.operations import (
+    compose_cmd,
+    down_env,
+    restart_env,
+    run_local,
+    serve_env,
+    stop_env,
+    up_env,
+)
 from forsa_dev.state import list_states, load_state
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
@@ -176,6 +184,29 @@ def logs(
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
     subprocess.run(compose_cmd(env, "logs", "-f"))
+
+
+@app.command()
+def run(
+    directory: Annotated[
+        Path, typer.Argument(help="Directory to serve from.", show_default=False)
+    ] = Path("."),
+    data_dir: Annotated[
+        Path | None, typer.Option("--data-dir", help="Override data directory.")
+    ] = None,
+    config: ConfigOption = None,
+):
+    """Run a FORSA server from any directory (no worktree needed)."""
+    cfg = _load(config)
+    work_dir = directory.resolve()
+    if not work_dir.is_dir():
+        typer.echo(f"Error: {work_dir} is not a directory.", err=True)
+        raise typer.Exit(1)
+    try:
+        run_local(cfg, work_dir, data_dir=data_dir)
+    except RuntimeError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1)
 
 
 @app.command()
