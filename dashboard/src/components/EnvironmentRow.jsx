@@ -1,4 +1,4 @@
-import { Terminal, Trash2 } from 'lucide-react'
+import { Code2, Terminal, Trash2 } from 'lucide-react'
 import ActionButtons from './ActionButtons'
 import ConfirmModal from './ConfirmModal'
 import StatusBadge from './StatusBadge'
@@ -68,6 +68,15 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
             >
               <Terminal className="h-4 w-4" />
             </button>
+            <a
+              href={`vscode://vscode-remote/ssh-remote+${window.location.hostname}${env.worktree}`}
+              title="Open in VSCode"
+              aria-label={`Open ${env.name} in VSCode`}
+              className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Code2 className="h-4 w-4" />
+            </a>
             <button
               onClick={handleDeleteClick}
               disabled={loadingDelete}

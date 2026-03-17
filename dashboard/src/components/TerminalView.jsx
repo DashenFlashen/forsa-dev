@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Terminal, ExternalLink } from 'lucide-react'
+import { Code2, X, Terminal, ExternalLink } from 'lucide-react'
 import ActionButtons from './ActionButtons'
 import StatusBadge from './StatusBadge'
 import LogsView from './LogsView'
@@ -42,6 +42,15 @@ export default function TerminalView({ env, host, onClose, onAction, loadingActi
         >
           :{env.port}
           <ExternalLink className="h-3 w-3" />
+        </a>
+        <a
+          href={`vscode://vscode-remote/ssh-remote+${host}${env.worktree}`}
+          title="Open in VSCode"
+          className="flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Code2 className="h-3.5 w-3.5" />
+          <span className="hidden lg:inline">VSCode</span>
         </a>
         <button
           onClick={onClose}
