@@ -32,7 +32,9 @@ async function apiFetch(path, options) {
       const body = await resp.json()
       if (body.detail) detail = body.detail
     } catch { /* no JSON body */ }
-    throw new Error(detail)
+    const err = new Error(detail)
+    err.status = resp.status
+    throw err
   }
   return resp.json()
 }
@@ -129,8 +131,8 @@ export default function App() {
       if (selectedEnv?.name === name && selectedEnv?.user === owner) setSelectedEnv(null)
       await fetchEnvs()
     } catch (e) {
-      if (e.message.includes('409')) {
-        throw e  // EnvironmentRow handles the force-delete modal
+      if (e.status === 409) {
+        throw e  // EnvironmentRow/Card handles the force-delete modal
       } else {
         setError(e.message)
       }

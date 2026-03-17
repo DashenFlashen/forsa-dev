@@ -14,7 +14,7 @@ export default function useDeleteConfirmation(onDelete, env) {
     try {
       await onDelete(env.user, env.name, force)
     } catch (e) {
-      if (e.message.includes('409')) {
+      if (e.status === 409) {
         setConfirmDelete('force')
       }
     }
