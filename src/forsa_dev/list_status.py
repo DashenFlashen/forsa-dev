@@ -12,7 +12,7 @@ class Status:
 
 
 def check_status(tmux_status: str, served: bool, port_open: bool) -> Status:
-    if served and port_open:
+    if port_open:
         server = "running"
     elif served and not port_open:
         server = "crashed"
