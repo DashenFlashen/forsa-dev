@@ -9,12 +9,12 @@ function ActionBtn({ icon: Icon, label, onClick, disabled, loading, colorClass }
       disabled={disabled}
       title={label}
       aria-label={label}
-      className={`rounded-md p-2.5 lg:p-1.5 transition-colors disabled:opacity-50 ${colorClass}`}
+      className={`rounded-md p-2.5 lg:p-2 transition-colors disabled:opacity-50 ${colorClass}`}
     >
       {loading ? (
-        <RefreshCw className="h-4 w-4 lg:h-3.5 lg:w-3.5 animate-spin" />
+        <RefreshCw className="h-4 w-4 lg:h-4 lg:w-4 animate-spin" />
       ) : (
-        <Icon className="h-4 w-4 lg:h-3.5 lg:w-3.5" />
+        <Icon className="h-4 w-4 lg:h-4 lg:w-4" />
       )}
     </button>
   )
@@ -24,7 +24,7 @@ export default function ActionButtons({ env, onAction, loading }) {
   const serverStatus = env.status.server
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       {STATUS_SHOW_SERVE.includes(serverStatus) && (
         <ActionBtn
           icon={Play}

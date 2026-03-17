@@ -53,29 +53,29 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
         </td>
         <td className="px-4 py-3 text-sm text-gray-400 tabular-nums">{env.uptime}</td>
         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <ActionButtons env={env} onAction={onAction} loading={loadingAction} />
             <button
               onClick={() => onSelect(env)}
               disabled={!terminalReady}
               title={!ttydAlive ? 'Terminal not available' : !terminalReady ? 'Terminal starting…' : 'Open terminal'}
               aria-label={`Open terminal for ${env.name}`}
-              className={`rounded-md p-1.5 transition-colors ${
+              className={`rounded-md p-2 transition-colors ${
                 terminalReady
                   ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
                   : 'text-gray-600 cursor-not-allowed opacity-30'
               }`}
             >
-              <Terminal className="h-3.5 w-3.5" />
+              <Terminal className="h-4 w-4" />
             </button>
             <button
               onClick={handleDeleteClick}
               disabled={loadingDelete}
               title="Delete environment"
               aria-label={`Delete ${env.name}`}
-              className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-red-900/40 hover:text-red-400 disabled:opacity-50 ml-1"
+              className="rounded-md p-2 text-gray-500 transition-colors hover:bg-red-900/40 hover:text-red-400 disabled:opacity-50 ml-1"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </button>
           </div>
         </td>
