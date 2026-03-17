@@ -8,7 +8,7 @@ export default function AgentButtons({ onSelectAgent }) {
 
   useEffect(() => {
     fetch('/api/agents')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : [])
       .then(setAgents)
       .catch(() => {})
   }, [])
@@ -17,7 +17,7 @@ export default function AgentButtons({ onSelectAgent }) {
   useEffect(() => {
     const id = setInterval(() => {
       fetch('/api/agents')
-        .then((r) => r.json())
+        .then((r) => r.ok ? r.json() : [])
         .then(setAgents)
         .catch(() => {})
     }, 10000)

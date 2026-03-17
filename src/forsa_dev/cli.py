@@ -63,7 +63,7 @@ def init(
     port_end = typer.prompt("Port range end", default=3099)
     dashboard_port = typer.prompt("Dashboard port", default=8080)
     ttyd_port_start = typer.prompt("ttyd port range start", default=7600)
-    ttyd_port_end = typer.prompt("ttyd port range end", default=7699)
+    ttyd_port_end = typer.prompt("ttyd port range end", default=7697)
 
     cfg = Config(
         repo=Path(repo),
