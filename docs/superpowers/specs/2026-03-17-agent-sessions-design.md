@@ -40,7 +40,7 @@ Agents use fixed ports from the top of the existing ttyd range:
 - Root Claude: **7698**
 - forsa-dev Claude: **7699**
 
-These are singletons, so dynamic allocation adds complexity with no benefit. The ttyd range (7600–7699) still has 98 ports for environments.
+These are singletons, so dynamic allocation adds complexity with no benefit. The environment ttyd allocation range must be shrunk to 7600–7697 to prevent the port allocator from handing out agent ports to environments (the allocator scans state files, and agents have none).
 
 ### API: `GET /api/agents`
 
@@ -72,9 +72,9 @@ Returns agent data with live status. Returns empty list for non-Anders users.
 ### Dashboard startup flow
 
 In `create_app()`:
-1. Check if `anders` exists in `user_configs`
+1. Check if `anders` exists in `user_configs` (requires `anders` to be in the `forsa-devs` group with a valid config — already true in practice)
 2. If yes, call `ensure_agents()` with the fixed port mapping
-3. Register the `/api/agents` endpoint
+3. Register the `/api/agents` endpoint (always registered, returns empty list for non-Anders users)
 
 ### Frontend: `AgentButtons` component
 
@@ -98,9 +98,12 @@ Single "Agents" button in the header bar (between hostname and user avatar) that
 - Closes on outside click
 
 **Terminal:**
-- Clicking an agent card opens the existing `TerminalView` fullscreen overlay
-- Terminal tab only (no Logs tab — agents don't have docker compose)
-- TerminalView accepts a simplified agent object (name, ttyd_port, ttyd status)
+- Clicking an agent card opens the `TerminalView` fullscreen overlay
+- Modify `TerminalView` to accept an `agent` prop as an alternative to `env`. When rendering an agent:
+  - Show only the Terminal tab (no Logs tab — agents don't have docker compose)
+  - Hide ActionButtons, port link, and VSCode link
+  - Display the agent label and status in the title bar
+- This keeps a single overlay component rather than creating a parallel one
 
 **Data fetching:**
 - Fetch `/api/agents` once on mount and on the health polling interval (10s)
