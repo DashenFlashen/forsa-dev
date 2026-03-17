@@ -1,0 +1,42 @@
+/* dashboard/src/styles/theme.css */
+
+/* Smooth transitions for all interactive elements */
+.theme-transition {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Header gradient */
+.theme-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* Card hover lift */
+.theme-card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Subtle card gradient background */
+.theme-card-bg {
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%);
+}
+
+/* Gauge bar glow for high values */
+.theme-gauge-glow-red {
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+.theme-gauge-glow-yellow {
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.2);
+}
+
+/* Button press effect */
+.theme-btn-press:active {
+  transform: scale(0.97);
+}
+
+/* Collapsible section refined */
+.theme-section {
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.5) 100%);
+  border-color: rgba(51, 65, 85, 0.6);
+}
