@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Code2, X, Terminal, ExternalLink } from 'lucide-react'
 import ActionButtons from './ActionButtons'
+import VirtualKeyboard from './VirtualKeyboard'
 import StatusBadge from './StatusBadge'
 import LogsView from './LogsView'
 
@@ -75,12 +76,15 @@ export default function TerminalView({ env, agent, host, onClose, onAction, load
       {!isAgent && tab === 'logs' ? (
         <LogsView envName={env.name} envUser={env.user} />
       ) : src ? (
-        <iframe
-          src={src}
-          className="flex-1 w-full border-0"
-          title={`Terminal: ${name}`}
-          sandbox="allow-scripts allow-same-origin"
-        />
+        <>
+          <iframe
+            src={src}
+            className="flex-1 w-full border-0"
+            title={`Terminal: ${name}`}
+            sandbox="allow-scripts allow-same-origin"
+          />
+          <VirtualKeyboard host={host} ttydPort={ttydPort} />
+        </>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-gray-500">
           <Terminal className="h-8 w-8 text-gray-700" />
