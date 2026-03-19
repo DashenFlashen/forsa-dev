@@ -54,6 +54,7 @@ def agent_status(ttyd_ports: dict[str, int]) -> list[dict]:
             "label": agent["label"],
             "description": agent["description"],
             "cwd": str(agent["cwd"]),
+            "session": session,
             "ttyd_port": port,
             "tmux": tmux.session_status(session),
             "ttyd": "alive" if ttyd.ttyd_port_is_open(port) else "dead",

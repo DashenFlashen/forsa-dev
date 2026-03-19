@@ -10,6 +10,7 @@ export default function TerminalView({ env, agent, host, onClose, onAction, load
   const isAgent = !!agent
   const name = isAgent ? agent.label : env.name
   const ttydPort = isAgent ? agent.ttyd_port : env.ttyd_port
+  const session = isAgent ? agent.session : env?.tmux_session
   const src = ttydPort ? `http://${host}:${ttydPort}` : null
 
   return (
@@ -83,7 +84,7 @@ export default function TerminalView({ env, agent, host, onClose, onAction, load
             title={`Terminal: ${name}`}
             sandbox="allow-scripts allow-same-origin"
           />
-          <VirtualKeyboard host={host} ttydPort={ttydPort} />
+          <VirtualKeyboard session={session} />
         </>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-gray-500">

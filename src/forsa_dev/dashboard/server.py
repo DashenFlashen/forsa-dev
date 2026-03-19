@@ -45,6 +45,10 @@ class CreateEnvRequest(BaseModel):
     existing_branch: str | None = None
 
 
+class SendKeysRequest(BaseModel):
+    key: str
+
+
 def create_app(user_configs: dict[str, Config]) -> FastAPI:
     if not user_configs:
         raise ValueError("user_configs must not be empty")
@@ -103,6 +107,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
                 "worktree": str(env.worktree),
                 "port": env.port,
                 "ttyd_port": env.ttyd_port,
+                "tmux_session": env.tmux_session,
                 "url": env.url or f"http://{base_url}:{env.port}",
                 "created_at": env.created_at.isoformat(),
                 "served_at": env.served_at.isoformat() if env.served_at else None,
@@ -233,6 +238,18 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
                 await proc.wait()
 
         return StreamingResponse(generate(), media_type="text/event-stream")
+
+    @app.post("/api/tmux/{session}/keys")
+    def post_send_keys(session: str, body: SendKeysRequest) -> dict[str, str]:
+        if not tmux.session_exists(session):
+            raise HTTPException(status_code=404, detail=f"Session '{session}' not found")
+        try:
+            tmux.send_keys(session, body.key)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except RuntimeError as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "ok"}
 
     @app.get("/api/agents")
     def get_agents(forsa_user: str = Cookie(default=None)) -> list[dict[str, Any]]:

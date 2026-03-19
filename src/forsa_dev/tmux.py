@@ -47,6 +47,28 @@ def session_exists(session: str) -> bool:
     return session_status(session) != "missing"
 
 
+ALLOWED_KEYS = frozenset({
+    "Escape", "Tab", "Up", "Down", "Left", "Right",
+    "C-c", "PPage", "NPage",
+})
+
+
+def send_keys(session: str, key: str) -> None:
+    """Send a key to the active pane of a tmux session.
+
+    Only keys in ALLOWED_KEYS are accepted to prevent injection.
+    Raises ValueError for disallowed keys, RuntimeError if the session is missing.
+    """
+    if key not in ALLOWED_KEYS:
+        raise ValueError(f"Key not allowed: {key!r}")
+    result = subprocess.run(
+        ["tmux", "send-keys", "-t", session, key],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"tmux send-keys failed: {result.stderr}")
+
+
 def attach_session(session: str) -> None:
     """Attach to a tmux session. Replaces the current process.
     Uses switch-client if already inside tmux, attach-session otherwise."""
