@@ -77,15 +77,17 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
           >
             <Code2 className="h-4 w-4" />
           </a>
-          <button
-            onClick={handleDeleteClick}
-            disabled={loadingDelete}
-            title="Delete environment"
-            aria-label={`Delete ${env.name}`}
-            className="rounded-md p-2.5 text-gray-500 transition-colors hover:bg-red-900/40 hover:text-red-400 disabled:opacity-50"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          {env.type !== 'repo' && (
+            <button
+              onClick={handleDeleteClick}
+              disabled={loadingDelete}
+              title="Delete environment"
+              aria-label={`Delete ${env.name}`}
+              className="rounded-md p-2.5 text-gray-500 transition-colors hover:bg-red-900/40 hover:text-red-400 disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import AgentButtons from './components/AgentButtons'
 import CreateEnvironment from './components/CreateEnvironment'
 import EnvironmentTable from './components/EnvironmentTable'
+import WorkspaceCard from './components/WorkspaceCard'
 import ErrorToast from './components/ErrorToast'
 import HealthPanel from './components/HealthPanel'
 import TerminalView from './components/TerminalView'
@@ -182,9 +183,18 @@ export default function App() {
       <ErrorToast message={error} onDismiss={() => setError(null)} />
       <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6 lg:py-6 space-y-6">
         <HealthPanel health={health} />
+        <WorkspaceCard
+          env={envs.find((e) => e.type === 'repo' && e.user === user)}
+          onAction={handleAction}
+          loading={(() => {
+            const ws = envs.find((e) => e.type === 'repo' && e.user === user)
+            return ws ? loadingActions[`${ws.user}/${ws.name}`] : null
+          })()}
+          onSelect={handleSelect}
+        />
         <CreateEnvironment onCreate={handleCreate} defaultDataDir={defaultDataDir} />
         <EnvironmentTable
-          envs={envs}
+          envs={envs.filter((e) => e.type !== 'repo')}
           onAction={handleAction}
           loadingActions={loadingActions}
           onSelect={handleSelect}
