@@ -19,7 +19,15 @@ from pydantic import BaseModel
 from forsa_dev import agents, git, tmux, ttyd
 from forsa_dev.config import Config, load_config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
-from forsa_dev.operations import compose_cmd, down_env, restart_env, serve_env, stop_env, up_env
+from forsa_dev.operations import (
+    compose_cmd,
+    down_env,
+    repo_compose_env,
+    restart_env,
+    serve_env,
+    stop_env,
+    up_env,
+)
 from forsa_dev.ports import allocate_ports
 from forsa_dev.state import Environment, list_states, load_state, save_state
 
@@ -295,19 +303,21 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
 
     @app.get("/api/environments/{owner}/{name}/logs")
     async def stream_logs(owner: str, name: str) -> StreamingResponse:
-        _get_owner_cfg(owner)
+        cfg = _get_owner_cfg(owner)
         try:
             env = load_state(owner, name, state_dir)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
 
         cmd = compose_cmd(env, "logs", "-f", "--tail=100")
+        run_env = repo_compose_env(cfg, env) if env.type == "repo" else None
 
         async def generate():
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
+                env=run_env,
             )
             try:
                 async for line in proc.stdout:

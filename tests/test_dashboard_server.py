@@ -827,6 +827,48 @@ def test_get_environments_includes_type_field(setup):
     assert data[0]["type"] == "worktree"
 
 
+def test_get_environments_refreshes_branch_for_repo_type(tmp_path):
+    """Repo environments show current branch from git, not stored value."""
+    state_dir = tmp_path / "state"
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    compose_file = repo_dir / "docker-compose.dev.yml"
+    compose_file.write_text("services: {}")
+    env = Environment(
+        name="main", user=TEST_USER, branch="old-branch",
+        worktree=repo_dir, tmux_session=f"{TEST_USER}-main",
+        compose_file=compose_file,
+        port=3050, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, type="repo",
+    )
+    save_state(env, state_dir)
+    cfg = Config(
+        repo=repo_dir, worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.port_is_open", return_value=False), \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd, \
+         patch("forsa_dev.dashboard.server.git.current_branch", return_value="feature-x"):
+        mock_tmux.session_status.return_value = "active"
+        mock_tmux.session_exists.return_value = True
+        mock_ttyd.ttyd_is_alive.return_value = True
+        mock_ttyd.ttyd_port_is_open.return_value = False
+        app = create_app({TEST_USER: cfg})
+        client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
+        response = client.get("/api/environments")
+    data = response.json()
+    repo_envs = [e for e in data if e["type"] == "repo"]
+    assert len(repo_envs) == 1
+    assert repo_envs[0]["branch"] == "feature-x"
+
+
 # --- Delete guard for repo environments ---
 
 

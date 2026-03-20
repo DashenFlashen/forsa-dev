@@ -153,6 +153,9 @@ export default function App() {
   // Derive host from current page location
   const host = window.location.hostname
 
+  const workspaceEnv = envs.find((e) => e.type === 'repo' && e.user === user)
+  const worktreeEnvs = envs.filter((e) => e.type !== 'repo')
+
   if (!user) {
     return <UserPicker onSelect={handleSelectUser} />
   }
@@ -184,17 +187,14 @@ export default function App() {
       <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6 lg:py-6 space-y-6">
         <HealthPanel health={health} />
         <WorkspaceCard
-          env={envs.find((e) => e.type === 'repo' && e.user === user)}
+          env={workspaceEnv}
           onAction={handleAction}
-          loading={(() => {
-            const ws = envs.find((e) => e.type === 'repo' && e.user === user)
-            return ws ? loadingActions[`${ws.user}/${ws.name}`] : null
-          })()}
+          loading={workspaceEnv ? loadingActions[`${workspaceEnv.user}/${workspaceEnv.name}`] : null}
           onSelect={handleSelect}
         />
         <CreateEnvironment onCreate={handleCreate} defaultDataDir={defaultDataDir} />
         <EnvironmentTable
-          envs={envs.filter((e) => e.type !== 'repo')}
+          envs={worktreeEnvs}
           onAction={handleAction}
           loadingActions={loadingActions}
           onSelect={handleSelect}
