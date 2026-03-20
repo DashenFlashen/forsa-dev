@@ -825,3 +825,41 @@ def test_get_environments_includes_type_field(setup):
         response = client.get("/api/environments")
     data = response.json()
     assert data[0]["type"] == "worktree"
+
+
+# --- Delete guard for repo environments ---
+
+
+def test_delete_returns_400_for_repo_environment(tmp_path):
+    state_dir = tmp_path / "state"
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    compose_file = repo_dir / "docker-compose.dev.yml"
+    compose_file.write_text("services: {}")
+    env = Environment(
+        name="main", user=TEST_USER, branch="main",
+        worktree=repo_dir, tmux_session=f"{TEST_USER}-main",
+        compose_file=compose_file,
+        port=3050, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, type="repo",
+    )
+    save_state(env, state_dir)
+    cfg = Config(
+        repo=repo_dir, worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd:
+        mock_tmux.session_exists.return_value = True
+        mock_ttyd.ttyd_is_alive.return_value = True
+        mock_ttyd.ttyd_port_is_open.return_value = True
+        app = create_app({TEST_USER: cfg})
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    response = client.delete(f"/api/environments/{TEST_USER}/main")
+    assert response.status_code == 400

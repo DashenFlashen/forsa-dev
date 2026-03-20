@@ -284,6 +284,8 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             down_env(cfg, owner, name, force=force)
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         except RuntimeError as e:
             raise HTTPException(status_code=409, detail=str(e))
         return {"status": "ok"}
