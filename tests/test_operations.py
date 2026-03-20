@@ -160,6 +160,12 @@ def test_up_env_rejects_invalid_name(up_cfg, bad_name):
         up_env(cfg, USER, bad_name)
 
 
+def test_up_env_rejects_reserved_name_main(up_cfg):
+    cfg = up_cfg
+    with pytest.raises(ValueError, match="reserved"):
+        up_env(cfg, USER, "main")
+
+
 def test_down_env_cleans_up(cfg_and_env, git_repo):
     cfg, env = cfg_and_env
     # Give the env a ttyd_pid

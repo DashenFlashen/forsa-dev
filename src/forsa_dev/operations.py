@@ -65,6 +65,11 @@ def up_env(
             "and contain only lowercase letters, digits, hyphens, and underscores."
         )
 
+    if name == "main":
+        raise ValueError(
+            "The name 'main' is reserved for main repo environments."
+        )
+
     full_name = f"{user}-{name}"
     worktree = cfg.worktree_dir / name
 
