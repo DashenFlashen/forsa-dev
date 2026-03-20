@@ -754,3 +754,74 @@ def test_auto_discovery_does_not_recreate_existing_state(tmp_path):
         app = create_app({TEST_USER: cfg})
     loaded = load_state(TEST_USER, "main", state_dir)
     assert loaded.port == 3050
+
+
+# --- Visibility filtering and branch refresh ---
+
+
+def test_get_environments_hides_other_users_repo_envs(tmp_path):
+    """Repo envs are only visible to their owner."""
+    state_dir = tmp_path / "state"
+    cfg = Config(
+        repo=tmp_path / "repo", worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    # Create a repo env for "other_user"
+    repo_env = Environment(
+        name="main", user="other_user", branch="main",
+        worktree=tmp_path / "other-repo", tmux_session="other_user-main",
+        compose_file=tmp_path / "other-repo" / "docker-compose.dev.yml",
+        port=3050, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, type="repo",
+    )
+    save_state(repo_env, state_dir)
+    # Create a worktree env for "other_user" (should still be visible)
+    wt_env = Environment(
+        name="ticket-42", user="other_user", branch="ticket-42",
+        worktree=tmp_path / "worktrees" / "ticket-42",
+        tmux_session="other_user-ticket-42",
+        compose_file=tmp_path / "worktrees" / "ticket-42" / "docker-compose.dev.yml",
+        port=3051, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, type="worktree",
+    )
+    save_state(wt_env, state_dir)
+    user_configs = {TEST_USER: cfg, "other_user": cfg}
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.port_is_open", return_value=False), \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd:
+        mock_tmux.session_status.return_value = "missing"
+        mock_tmux.session_exists.return_value = True
+        mock_ttyd.ttyd_is_alive.return_value = True
+        mock_ttyd.ttyd_port_is_open.return_value = False
+        mock_ttyd.start_ttyd.return_value = 1
+        app = create_app(user_configs)
+        client = TestClient(app)
+        client.cookies.set("forsa_user", TEST_USER)
+        response = client.get("/api/environments")
+    data = response.json()
+    names = [(e["user"], e["name"]) for e in data]
+    # other_user's worktree should be visible
+    assert ("other_user", "ticket-42") in names
+    # other_user's repo env should NOT be visible
+    assert ("other_user", "main") not in names
+
+
+def test_get_environments_includes_type_field(setup):
+    user_configs, _, _ = setup
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.port_is_open", return_value=False), \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd:
+        mock_tmux.session_status.return_value = "active"
+        mock_ttyd.ttyd_is_alive.return_value = False
+        mock_ttyd.ttyd_port_is_open.return_value = False
+        app = create_app(user_configs)
+        client = TestClient(app)
+        response = client.get("/api/environments")
+    data = response.json()
+    assert data[0]["type"] == "worktree"

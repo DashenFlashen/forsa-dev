@@ -149,10 +149,21 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
         return [{"name": name} for name in user_configs]
 
     @app.get("/api/environments")
-    def get_environments() -> list[dict[str, Any]]:
+    def get_environments(forsa_user: str = Cookie(default=None)) -> list[dict[str, Any]]:
         envs = list_states(state_dir)
         result = []
         for env in envs:
+            # Repo environments are only visible to their owner
+            if env.type == "repo" and env.user != forsa_user:
+                continue
+
+            # Refresh branch for repo environments
+            branch = env.branch
+            if env.type == "repo":
+                current = git.current_branch(env.worktree)
+                if current is not None:
+                    branch = current
+
             tmux_stat = tmux.session_status(env.tmux_session)
             port_open = port_is_open(env.port)
             status = check_status(
@@ -165,7 +176,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             result.append({
                 "name": env.name,
                 "user": env.user,
-                "branch": env.branch,
+                "branch": branch,
                 "worktree": str(env.worktree),
                 "port": env.port,
                 "ttyd_port": env.ttyd_port,
@@ -179,6 +190,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
                     "ttyd": "alive" if ttyd_alive else "dead",
                 },
                 "uptime": format_uptime(env.served_at),
+                "type": env.type,
             })
         return result
 
