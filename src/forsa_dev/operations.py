@@ -200,6 +200,9 @@ def run_local(cfg: Config, work_dir: Path, data_dir: Path | None = None) -> None
 def down_env(cfg: Config, user: str, name: str, force: bool = False) -> None:
     env = load_state(user, name, cfg.state_dir)
 
+    if env.type == "repo":
+        raise ValueError("Cannot delete repo environments.")
+
     if not force and not git.branch_is_pushed(cfg.repo, env.branch):
         raise RuntimeError(
             f"Branch '{env.branch}' has not been pushed or merged. Use force=True to delete anyway."

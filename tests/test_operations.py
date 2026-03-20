@@ -186,6 +186,29 @@ def test_down_env_cleans_up(cfg_and_env, git_repo):
     assert not _state_path(USER, "ticket-42", cfg.state_dir).exists()
 
 
+def test_down_env_raises_for_repo_type(tmp_path):
+    state_dir = tmp_path / "state"
+    cfg = Config(
+        repo=tmp_path / "repo", worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="optbox.example.ts.net", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    env = Environment(
+        name="main", user=USER, branch="main",
+        worktree=tmp_path / "repo", tmux_session=f"{USER}-main",
+        compose_file=tmp_path / "repo" / "docker-compose.dev.yml",
+        port=3002, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, type="repo",
+    )
+    save_state(env, state_dir)
+    with pytest.raises(ValueError, match="Cannot delete"):
+        down_env(cfg, USER, "main")
+
+
 def test_down_env_raises_if_branch_not_pushed(cfg_and_env):
     cfg, _ = cfg_and_env
     with patch("forsa_dev.operations.git.branch_is_pushed", return_value=False):
