@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import grp
+import logging
+import os
 import pwd
+from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +20,10 @@ from forsa_dev import agents, git, tmux, ttyd
 from forsa_dev.config import Config, load_config
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
 from forsa_dev.operations import compose_cmd, down_env, restart_env, serve_env, stop_env, up_env
-from forsa_dev.state import list_states, load_state
+from forsa_dev.ports import allocate_ports
+from forsa_dev.state import Environment, list_states, load_state, save_state
+
+logger = logging.getLogger(__name__)
 
 
 def discover_users() -> dict[str, Config]:
@@ -71,6 +78,61 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             agents.ensure_agents(agent_ttyd_ports)
         except Exception:
             pass  # agent startup failure shouldn't block dashboard
+
+    # Auto-discover main repo environments
+    for username, cfg in user_configs.items():
+        try:
+            load_state(username, "main", state_dir)
+        except FileNotFoundError:
+            compose_file = cfg.repo / "docker-compose.dev.yml"
+            if not compose_file.exists():
+                logger.warning(
+                    "Skipping repo env for %s: %s not found", username, compose_file
+                )
+                continue
+            ranges = (
+                (cfg.port_range_start, cfg.port_range_end),
+                (cfg.ttyd_port_range_start, cfg.ttyd_port_range_end),
+            )
+            with allocate_ports(state_dir, *ranges) as (port, ttyd_port):
+                env = Environment(
+                    name="main",
+                    user=username,
+                    branch=git.current_branch(cfg.repo) or "",
+                    worktree=cfg.repo,
+                    tmux_session=f"{username}-main",
+                    compose_file=compose_file,
+                    port=port,
+                    url=None,
+                    created_at=datetime.now(tz=timezone.utc),
+                    served_at=None,
+                    ttyd_port=ttyd_port,
+                    type="repo",
+                )
+                save_state(env, state_dir)
+
+    # Ensure tmux and ttyd for repo environments
+    for username, cfg in user_configs.items():
+        try:
+            env = load_state(username, "main", state_dir)
+        except FileNotFoundError:
+            continue
+        if env.type != "repo":
+            continue
+        if not tmux.session_exists(env.tmux_session):
+            shell = os.environ.get("SHELL", "/bin/bash")
+            command = f"{shell} -i -c 'claude --dangerously-skip-permissions --effort max; exec {shell}'"
+            try:
+                tmux.create_session(env.tmux_session, env.worktree, command=command)
+            except RuntimeError:
+                pass
+        if env.ttyd_port and not ttyd.ttyd_is_alive(env.ttyd_pid):
+            try:
+                pid = ttyd.start_ttyd(env.ttyd_port, env.tmux_session)
+                updated = replace(env, ttyd_pid=pid)
+                save_state(updated, state_dir)
+            except Exception:
+                pass
 
     def get_user(forsa_user: str = Cookie(default=None)) -> str:
         if not forsa_user or forsa_user not in user_configs:

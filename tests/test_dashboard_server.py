@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from forsa_dev.config import Config, save_config
 from forsa_dev.dashboard.server import create_app, discover_users
-from forsa_dev.state import Environment, save_state
+from forsa_dev.state import Environment, load_state, save_state
 
 TEST_USER = "testuser"
 
@@ -669,3 +669,88 @@ def test_get_agents_no_auth_returns_empty(setup):
     response = client.get("/api/agents")
     assert response.status_code == 200
     assert response.json() == []
+
+
+# --- Auto-discovery of repo environments ---
+
+
+def test_auto_discovery_creates_repo_environment_state(tmp_path):
+    """Dashboard startup creates state for main repo environments."""
+    state_dir = tmp_path / "state"
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    compose_file = repo_dir / "docker-compose.dev.yml"
+    compose_file.write_text("services: {}")
+    cfg = Config(
+        repo=repo_dir, worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd, \
+         patch("forsa_dev.dashboard.server.git.current_branch", return_value="main"):
+        mock_tmux.session_exists.return_value = False
+        mock_ttyd.start_ttyd.return_value = 11111
+        mock_ttyd.ttyd_is_alive.return_value = True
+        mock_ttyd.ttyd_port_is_open.return_value = True
+        app = create_app({TEST_USER: cfg})
+    env = load_state(TEST_USER, "main", state_dir)
+    assert env.type == "repo"
+    assert env.name == "main"
+    assert env.worktree == repo_dir
+    assert env.compose_file == compose_file
+
+
+def test_auto_discovery_skips_when_compose_missing(tmp_path):
+    """If docker-compose.dev.yml doesn't exist in repo, skip auto-discovery."""
+    state_dir = tmp_path / "state"
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    cfg = Config(
+        repo=repo_dir, worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    app = create_app({TEST_USER: cfg})
+    with pytest.raises(FileNotFoundError):
+        load_state(TEST_USER, "main", state_dir)
+
+
+def test_auto_discovery_does_not_recreate_existing_state(tmp_path):
+    """If state already exists, don't overwrite it."""
+    state_dir = tmp_path / "state"
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    compose_file = repo_dir / "docker-compose.dev.yml"
+    compose_file.write_text("services: {}")
+    env = Environment(
+        name="main", user=TEST_USER, branch="main",
+        worktree=repo_dir, tmux_session=f"{TEST_USER}-main",
+        compose_file=compose_file,
+        port=3050, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, type="repo",
+    )
+    save_state(env, state_dir)
+    cfg = Config(
+        repo=repo_dir, worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="localhost", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd:
+        mock_tmux.session_exists.return_value = True
+        mock_ttyd.ttyd_is_alive.return_value = True
+        mock_ttyd.ttyd_port_is_open.return_value = True
+        app = create_app({TEST_USER: cfg})
+    loaded = load_state(TEST_USER, "main", state_dir)
+    assert loaded.port == 3050
