@@ -197,6 +197,18 @@ def run_local(cfg: Config, work_dir: Path, data_dir: Path | None = None) -> None
         delete_state("local", "run", cfg.state_dir)
 
 
+def repo_compose_env(cfg: Config, env: Environment) -> dict[str, str]:
+    """Build environment variables for docker compose with a repo environment."""
+    return {
+        **os.environ,
+        "FORSA_DEV_PORT": str(env.port),
+        "FORSA_DEV_DATA": str(cfg.data_dir),
+        "FORSA_DEV_CONTAINER": f"forsa-{env.user}-{env.name}",
+        "FORSA_DEV_IMAGE": cfg.docker_image,
+        "FORSA_DEV_GUROBI_LIC": str(cfg.gurobi_lic),
+    }
+
+
 def down_env(cfg: Config, user: str, name: str, force: bool = False) -> None:
     env = load_state(user, name, cfg.state_dir)
 

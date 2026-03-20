@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from forsa_dev.config import Config
-from forsa_dev.operations import down_env, restart_env, serve_env, stop_env, up_env
+from forsa_dev.operations import down_env, repo_compose_env, restart_env, serve_env, stop_env, up_env
 from forsa_dev.state import Environment, load_state, save_state
 
 USER = getpass.getuser()
@@ -323,3 +323,16 @@ def test_up_env_from_existing_branch_does_not_delete_branch_on_ttyd_failure(up_c
             up_env(cfg, USER, "keep-me", existing_branch="keep-me")
     mock_remove.assert_called_once()
     mock_delete.assert_not_called()
+
+
+def test_repo_compose_env_builds_correct_dict(cfg_and_env):
+    cfg, env = cfg_and_env
+    from dataclasses import replace
+    repo_env = replace(env, name="main", type="repo")
+    result = repo_compose_env(cfg, repo_env)
+    assert result["FORSA_DEV_PORT"] == str(repo_env.port)
+    assert result["FORSA_DEV_DATA"] == str(cfg.data_dir)
+    assert result["FORSA_DEV_CONTAINER"] == f"forsa-{repo_env.user}-main"
+    assert result["FORSA_DEV_IMAGE"] == cfg.docker_image
+    assert result["FORSA_DEV_GUROBI_LIC"] == str(cfg.gurobi_lic)
+    assert "PATH" in result
