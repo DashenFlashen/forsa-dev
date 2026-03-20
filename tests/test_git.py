@@ -6,6 +6,7 @@ from forsa_dev.git import (
     branch_is_pushed,
     create_branch_and_worktree,
     create_worktree_from_branch,
+    current_branch,
     delete_branch,
     list_branches,
     remove_worktree,
@@ -117,3 +118,23 @@ def test_create_worktree_from_branch_fails_for_missing_branch(git_repo, tmp_path
     with pytest.raises(RuntimeError, match="git worktree add failed"):
         create_worktree_from_branch(repo=git_repo, branch="no-such-branch", worktree=wt)
     assert not wt.exists()
+
+
+def test_current_branch_returns_branch_name(git_repo):
+    assert current_branch(git_repo) == "main"
+
+
+def test_current_branch_after_checkout(git_repo):
+    subprocess.run(["git", "checkout", "-b", "feature"], check=True, capture_output=True, cwd=git_repo)
+    assert current_branch(git_repo) == "feature"
+
+
+def test_current_branch_returns_head_when_detached(git_repo):
+    result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, cwd=git_repo)
+    sha = result.stdout.strip()
+    subprocess.run(["git", "checkout", sha], check=True, capture_output=True, cwd=git_repo)
+    assert current_branch(git_repo) == "HEAD"
+
+
+def test_current_branch_returns_none_for_invalid_repo(tmp_path):
+    assert current_branch(tmp_path) is None
