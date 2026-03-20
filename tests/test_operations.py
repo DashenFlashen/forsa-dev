@@ -336,3 +336,60 @@ def test_repo_compose_env_builds_correct_dict(cfg_and_env):
     assert result["FORSA_DEV_IMAGE"] == cfg.docker_image
     assert result["FORSA_DEV_GUROBI_LIC"] == str(cfg.gurobi_lic)
     assert "PATH" in result
+
+
+def _repo_env_cfg(tmp_path):
+    """Helper to create a repo-type environment and config for testing."""
+    state_dir = tmp_path / "state"
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    compose_file = repo_dir / "docker-compose.dev.yml"
+    compose_file.write_text("services: {}")
+    env = Environment(
+        name="main", user=USER, branch="main",
+        worktree=repo_dir, tmux_session=f"{USER}-main",
+        compose_file=compose_file,
+        port=3002, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, type="repo",
+    )
+    save_state(env, state_dir)
+    cfg = Config(
+        repo=repo_dir, worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="optbox.example.ts.net", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    return cfg
+
+
+def test_serve_env_passes_env_vars_for_repo_type(tmp_path):
+    cfg = _repo_env_cfg(tmp_path)
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        serve_env(cfg, USER, "main")
+    call_kwargs = mock_run.call_args
+    assert call_kwargs.kwargs.get("env") is not None
+    assert call_kwargs.kwargs["env"]["FORSA_DEV_PORT"] == "3002"
+
+
+def test_stop_env_passes_env_vars_for_repo_type(tmp_path):
+    cfg = _repo_env_cfg(tmp_path)
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        stop_env(cfg, USER, "main")
+    call_kwargs = mock_run.call_args
+    assert call_kwargs.kwargs.get("env") is not None
+    assert call_kwargs.kwargs["env"]["FORSA_DEV_PORT"] == "3002"
+
+
+def test_restart_env_passes_env_vars_for_repo_type(tmp_path):
+    cfg = _repo_env_cfg(tmp_path)
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        restart_env(cfg, USER, "main")
+    call_kwargs = mock_run.call_args
+    assert call_kwargs.kwargs.get("env") is not None
+    assert call_kwargs.kwargs["env"]["FORSA_DEV_PORT"] == "3002"
