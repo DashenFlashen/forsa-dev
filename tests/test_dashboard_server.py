@@ -696,7 +696,7 @@ def test_auto_discovery_creates_repo_environment_state(tmp_path):
         mock_ttyd.start_ttyd.return_value = 11111
         mock_ttyd.ttyd_is_alive.return_value = True
         mock_ttyd.ttyd_port_is_open.return_value = True
-        app = create_app({TEST_USER: cfg})
+        create_app({TEST_USER: cfg})
     env = load_state(TEST_USER, "main", state_dir)
     assert env.type == "repo"
     assert env.name == "main"
@@ -717,7 +717,7 @@ def test_auto_discovery_skips_when_compose_missing(tmp_path):
         port_range_start=3000, port_range_end=3099,
         ttyd_port_range_start=7600, ttyd_port_range_end=7699,
     )
-    app = create_app({TEST_USER: cfg})
+    create_app({TEST_USER: cfg})
     with pytest.raises(FileNotFoundError):
         load_state(TEST_USER, "main", state_dir)
 
@@ -751,7 +751,7 @@ def test_auto_discovery_does_not_recreate_existing_state(tmp_path):
         mock_tmux.session_exists.return_value = True
         mock_ttyd.ttyd_is_alive.return_value = True
         mock_ttyd.ttyd_port_is_open.return_value = True
-        app = create_app({TEST_USER: cfg})
+        create_app({TEST_USER: cfg})
     loaded = load_state(TEST_USER, "main", state_dir)
     assert loaded.port == 3050
 

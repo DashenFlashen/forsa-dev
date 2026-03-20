@@ -125,12 +125,18 @@ def test_current_branch_returns_branch_name(git_repo):
 
 
 def test_current_branch_after_checkout(git_repo):
-    subprocess.run(["git", "checkout", "-b", "feature"], check=True, capture_output=True, cwd=git_repo)
+    subprocess.run(
+        ["git", "checkout", "-b", "feature"],
+        check=True, capture_output=True, cwd=git_repo,
+    )
     assert current_branch(git_repo) == "feature"
 
 
 def test_current_branch_returns_head_when_detached(git_repo):
-    result = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, cwd=git_repo)
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True, text=True, cwd=git_repo,
+    )
     sha = result.stdout.strip()
     subprocess.run(["git", "checkout", sha], check=True, capture_output=True, cwd=git_repo)
     assert current_branch(git_repo) == "HEAD"

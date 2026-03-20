@@ -121,7 +121,10 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             continue
         if not tmux.session_exists(env.tmux_session):
             shell = os.environ.get("SHELL", "/bin/bash")
-            command = f"{shell} -i -c 'claude --dangerously-skip-permissions --effort max; exec {shell}'"
+            command = (
+                f"{shell} -i -c 'claude --dangerously-skip-permissions"
+                f" --effort max; exec {shell}'"
+            )
             try:
                 tmux.create_session(env.tmux_session, env.worktree, command=command)
             except RuntimeError:

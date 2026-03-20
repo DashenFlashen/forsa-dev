@@ -8,7 +8,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from forsa_dev.config import Config
-from forsa_dev.operations import down_env, repo_compose_env, restart_env, serve_env, stop_env, up_env
+from forsa_dev.operations import (
+    down_env,
+    repo_compose_env,
+    restart_env,
+    serve_env,
+    stop_env,
+    up_env,
+)
 from forsa_dev.state import Environment, load_state, save_state
 
 USER = getpass.getuser()
