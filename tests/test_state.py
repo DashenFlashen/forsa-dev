@@ -113,3 +113,34 @@ def test_state_roundtrip_with_ttyd_fields(tmp_path):
     loaded = load_state("anders", "ticket-42", state_dir)
     assert loaded.ttyd_port == 7602
     assert loaded.ttyd_pid == 12345
+
+
+def test_deserialize_state_without_type_field(tmp_path):
+    """State files written before type support must still load as worktree."""
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    old_data = {
+        "name": "ticket-42", "user": "anders", "branch": "ticket-42",
+        "worktree": str(tmp_path / "wt"), "tmux_session": "anders-ticket-42",
+        "compose_file": str(tmp_path / "compose.yml"),
+        "port": 3002, "url": None,
+        "created_at": "2026-03-07T22:00:00+00:00", "served_at": None,
+    }
+    (state_dir / "anders-ticket-42.json").write_text(json.dumps(old_data))
+    env = load_state("anders", "ticket-42", state_dir)
+    assert env.type == "worktree"
+
+
+def test_state_roundtrip_with_type_field(tmp_path):
+    state_dir = tmp_path / "state"
+    env = Environment(
+        name="main", user="anders", branch="main",
+        worktree=tmp_path / "repo", tmux_session="anders-main",
+        compose_file=tmp_path / "compose.yml",
+        port=3002, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, type="repo",
+    )
+    save_state(env, state_dir)
+    loaded = load_state("anders", "main", state_dir)
+    assert loaded.type == "repo"

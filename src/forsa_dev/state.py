@@ -23,6 +23,7 @@ class Environment:
     served_at: datetime | None
     ttyd_port: int | None = None
     ttyd_pid: int | None = None
+    type: str = "worktree"
 
 
 def _state_path(user: str, name: str, state_dir: Path) -> Path:
@@ -53,6 +54,7 @@ def _deserialize(data: dict) -> Environment:
         served_at=datetime.fromisoformat(data["served_at"]) if data["served_at"] else None,
         ttyd_port=data.get("ttyd_port"),
         ttyd_pid=data.get("ttyd_pid"),
+        type=data.get("type", "worktree"),
     )
 
 
