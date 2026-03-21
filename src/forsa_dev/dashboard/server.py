@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import grp
 import logging
-import os
 import pwd
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -128,10 +127,9 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
         if env.type != "repo":
             continue
         if not tmux.session_exists(env.tmux_session, run_as=username):
-            shell = os.environ.get("SHELL", "/bin/bash")
             command = (
-                f"{shell} -i -c 'claude --continue --dangerously-skip-permissions"
-                f" --effort max; exec {shell}'"
+                "bash -i -c 'claude --continue --dangerously-skip-permissions"
+                " --effort max; exec bash'"
             )
             try:
                 tmux.create_session(

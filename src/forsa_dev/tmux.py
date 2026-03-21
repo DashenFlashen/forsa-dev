@@ -17,9 +17,13 @@ def create_session(
     session: str, cwd: Path, command: str | None = None, run_as: str | None = None,
 ) -> None:
     """Create a detached tmux session. Raises RuntimeError if it fails."""
-    cmd = [*_sudo_prefix(run_as), "tmux", "new-session", "-d", "-s", session, "-c", str(cwd)]
+    prefix = _sudo_prefix(run_as)
+    cmd = [*prefix, "tmux", "new-session", "-d", "-s", session, "-c", str(cwd)]
     if command:
         cmd.append(command)
+    elif prefix:
+        # No command given — start a login shell as the target user.
+        cmd.append(f"sudo -u {run_as} -i bash")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"tmux new-session failed: {result.stderr}")
