@@ -130,7 +130,7 @@ def up_env(
         if with_claude else None
     )
     try:
-        tmux.create_session(full_name, worktree, command=command)
+        tmux.create_session(full_name, worktree, command=command, run_as=user)
     except RuntimeError:
         delete_state(user, name, cfg.state_dir)
         git.remove_worktree(cfg.repo, worktree)
@@ -139,10 +139,10 @@ def up_env(
         raise
 
     try:
-        pid = ttyd.start_ttyd(ttyd_port, full_name)
+        pid = ttyd.start_ttyd(ttyd_port, full_name, run_as=user)
     except Exception:
         try:
-            tmux.kill_session(full_name)
+            tmux.kill_session(full_name, run_as=user)
         except RuntimeError:
             pass
         delete_state(user, name, cfg.state_dir)
@@ -226,7 +226,7 @@ def down_env(cfg: Config, user: str, name: str, force: bool = False) -> None:
     subprocess.run(compose_cmd(env, "down"), check=False)
 
     try:
-        tmux.kill_session(env.tmux_session)
+        tmux.kill_session(env.tmux_session, run_as=user)
     except RuntimeError:
         pass
 

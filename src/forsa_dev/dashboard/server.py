@@ -127,19 +127,22 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             continue
         if env.type != "repo":
             continue
-        if not tmux.session_exists(env.tmux_session):
+        if not tmux.session_exists(env.tmux_session, run_as=username):
             shell = os.environ.get("SHELL", "/bin/bash")
             command = (
-                f"{shell} -i -c 'claude --dangerously-skip-permissions"
+                f"{shell} -i -c 'claude --continue --dangerously-skip-permissions"
                 f" --effort max; exec {shell}'"
             )
             try:
-                tmux.create_session(env.tmux_session, env.worktree, command=command)
+                tmux.create_session(
+                    env.tmux_session, env.worktree,
+                    command=command, run_as=username,
+                )
             except RuntimeError:
                 pass
-        if env.ttyd_port and not ttyd.ttyd_is_alive(env.ttyd_pid):
+        if env.ttyd_port and (env.ttyd_pid is None or not ttyd.ttyd_is_alive(env.ttyd_pid)):
             try:
-                pid = ttyd.start_ttyd(env.ttyd_port, env.tmux_session)
+                pid = ttyd.start_ttyd(env.ttyd_port, env.tmux_session, run_as=username)
                 updated = replace(env, ttyd_pid=pid)
                 save_state(updated, state_dir)
             except Exception:
@@ -175,7 +178,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
                 if current is not None:
                     branch = current
 
-            tmux_stat = tmux.session_status(env.tmux_session)
+            tmux_stat = tmux.session_status(env.tmux_session, run_as=env.user)
             port_open = port_is_open(env.port)
             status = check_status(
                 tmux_status=tmux_stat, served=env.url is not None, port_open=port_open
@@ -330,10 +333,12 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
 
     @app.post("/api/tmux/{session}/keys")
     def post_send_keys(session: str, body: SendKeysRequest) -> dict[str, str]:
-        if not tmux.session_exists(session):
+        # Session names are "{user}-{name}", extract the owner
+        owner = session.split("-", 1)[0] if "-" in session else None
+        if not tmux.session_exists(session, run_as=owner):
             raise HTTPException(status_code=404, detail=f"Session '{session}' not found")
         try:
-            tmux.send_keys(session, body.key)
+            tmux.send_keys(session, body.key, run_as=owner)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except RuntimeError as e:

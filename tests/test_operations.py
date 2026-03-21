@@ -233,7 +233,7 @@ def test_up_env_rolls_back_on_ttyd_failure(up_cfg):
         with pytest.raises(RuntimeError, match="ttyd failed"):
             up_env(cfg, USER, "new-feature")
 
-    mock_kill.assert_called_once_with(f"{USER}-new-feature")
+    mock_kill.assert_called_once_with(f"{USER}-new-feature", run_as=USER)
     from forsa_dev.state import _state_path
     assert not _state_path(USER, "new-feature", cfg.state_dir).exists()
 

@@ -1,13 +1,23 @@
 from __future__ import annotations
 
+import getpass
 import os
 import subprocess
 from pathlib import Path
 
 
-def create_session(session: str, cwd: Path, command: str | None = None) -> None:
+def _sudo_prefix(run_as: str | None) -> list[str]:
+    """Return a sudo prefix if run_as differs from the current user."""
+    if run_as and run_as != getpass.getuser():
+        return ["sudo", "-u", run_as]
+    return []
+
+
+def create_session(
+    session: str, cwd: Path, command: str | None = None, run_as: str | None = None,
+) -> None:
     """Create a detached tmux session. Raises RuntimeError if it fails."""
-    cmd = ["tmux", "new-session", "-d", "-s", session, "-c", str(cwd)]
+    cmd = [*_sudo_prefix(run_as), "tmux", "new-session", "-d", "-s", session, "-c", str(cwd)]
     if command:
         cmd.append(command)
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -15,10 +25,10 @@ def create_session(session: str, cwd: Path, command: str | None = None) -> None:
         raise RuntimeError(f"tmux new-session failed: {result.stderr}")
 
 
-def kill_session(session: str) -> None:
+def kill_session(session: str, run_as: str | None = None) -> None:
     """Kill a tmux session. Raises RuntimeError if it fails."""
     result = subprocess.run(
-        ["tmux", "kill-session", "-t", session],
+        [*_sudo_prefix(run_as), "tmux", "kill-session", "-t", session],
         capture_output=True,
         text=True,
     )
@@ -26,13 +36,13 @@ def kill_session(session: str) -> None:
         raise RuntimeError(f"tmux kill-session failed: {result.stderr}")
 
 
-def session_status(session: str) -> str:
+def session_status(session: str, run_as: str | None = None) -> str:
     """Return "active", "detached", or "missing" for the given tmux session."""
-    result = subprocess.run(
-        ["tmux", "list-sessions", "-F", "#{session_name} #{session_attached}"],
-        capture_output=True,
-        text=True,
-    )
+    cmd = [
+        *_sudo_prefix(run_as), "tmux", "list-sessions",
+        "-F", "#{session_name} #{session_attached}",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         return "missing"
     for line in result.stdout.splitlines():
@@ -42,9 +52,9 @@ def session_status(session: str) -> str:
     return "missing"
 
 
-def session_exists(session: str) -> bool:
+def session_exists(session: str, run_as: str | None = None) -> bool:
     """Return True if the tmux session exists."""
-    return session_status(session) != "missing"
+    return session_status(session, run_as=run_as) != "missing"
 
 
 ALLOWED_KEYS = frozenset({
@@ -53,7 +63,7 @@ ALLOWED_KEYS = frozenset({
 })
 
 
-def send_keys(session: str, key: str) -> None:
+def send_keys(session: str, key: str, run_as: str | None = None) -> None:
     """Send a key to the active pane of a tmux session.
 
     Only keys in ALLOWED_KEYS are accepted to prevent injection.
@@ -62,7 +72,7 @@ def send_keys(session: str, key: str) -> None:
     if key not in ALLOWED_KEYS:
         raise ValueError(f"Key not allowed: {key!r}")
     result = subprocess.run(
-        ["tmux", "send-keys", "-t", session, key],
+        [*_sudo_prefix(run_as), "tmux", "send-keys", "-t", session, key],
         capture_output=True, text=True,
     )
     if result.returncode != 0:

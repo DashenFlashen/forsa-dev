@@ -1,14 +1,30 @@
 from __future__ import annotations
 
+import getpass
 import os
 import signal
 import subprocess
 
 
-def start_ttyd(port: int, session: str) -> int:
+def _sudo_prefix(run_as: str | None) -> list[str]:
+    """Return a sudo prefix if run_as differs from the current user."""
+    if run_as and run_as != getpass.getuser():
+        return ["sudo", "-u", run_as]
+    return []
+
+
+def start_ttyd(port: int, session: str, run_as: str | None = None) -> int:
     """Start a ttyd process for the given tmux session. Returns the PID."""
+    # ttyd always runs as the current user, but attaches to tmux via sudo
+    # when the session belongs to a different user.
+    tmux_cmd = [*_sudo_prefix(run_as), "tmux", "attach", "-t", session]
+    cmd = ["ttyd", "-W", "-p", str(port), *tmux_cmd]
     proc = subprocess.Popen(
-        ["ttyd", "-W", "-p", str(port), "tmux", "attach", "-t", session]
+        cmd,
+        start_new_session=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     return proc.pid
 
