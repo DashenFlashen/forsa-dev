@@ -38,12 +38,15 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
     setBranchName(b ? deriveName(b) : '')
   }
 
+  // "New" tab base branch
+  const [fromBranch, setFromBranch] = useState('main')
+
   async function handleNewSubmit(e) {
     e.preventDefault()
     if (!name.trim()) return
     setLoading(true)
     try {
-      await onCreate(name.trim(), 'main', dataDir.trim() || null)
+      await onCreate(name.trim(), fromBranch, dataDir.trim() || null)
       setName('')
     } finally {
       setLoading(false)
@@ -109,21 +112,36 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
             </button>
           </div>
           {showOptions ? (
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500 whitespace-nowrap w-16">Data dir</label>
-              <input
-                type="text"
-                value={dataDir}
-                onChange={(e) => setDataDir(e.target.value)}
-                placeholder="/data/dev"
-                className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm font-mono text-gray-300 placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
-              />
-            </div>
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-500 whitespace-nowrap w-16">From</label>
+                <select
+                  value={fromBranch}
+                  onChange={(e) => setFromBranch(e.target.value)}
+                  disabled={loadingBranches}
+                  className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
+                >
+                  {branches.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-500 whitespace-nowrap w-16">Data dir</label>
+                <input
+                  type="text"
+                  value={dataDir}
+                  onChange={(e) => setDataDir(e.target.value)}
+                  placeholder="/data/dev"
+                  className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm font-mono text-gray-300 placeholder-gray-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50"
+                />
+              </div>
+            </>
           ) : (
             <button
               type="button"
               onClick={() => setShowOptions(true)}
-              className="self-start text-xs text-gray-500 hover:text-gray-400"
+              className="self-start rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors"
             >
               Options…
             </button>
@@ -183,7 +201,7 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
             <button
               type="button"
               onClick={() => setShowOptions(true)}
-              className="self-start text-xs text-gray-500 hover:text-gray-400"
+              className="self-start rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors"
             >
               Options…
             </button>

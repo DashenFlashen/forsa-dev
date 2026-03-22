@@ -87,7 +87,7 @@ def init(
 def up(
     name: str,
     from_branch: Annotated[str, typer.Option("--from", help="Branch to create from.")] = "main",
-    with_claude: Annotated[bool, typer.Option("--with-claude", help="Start tmux with Claude Code.")] = False,  # noqa: E501
+    with_claude: Annotated[bool, typer.Option("--with-claude/--no-claude", help="Start tmux with Claude Code.")] = True,  # noqa: E501
     config: ConfigOption = None,
 ):
     """Create a git worktree, compose file, and tmux session."""
