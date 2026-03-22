@@ -121,7 +121,8 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
                   disabled={loadingBranches}
                   className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
                 >
-                  {branches.map((b) => (
+                  <option value="main">main</option>
+                  {branches.filter((b) => b !== 'main').map((b) => (
                     <option key={b} value={b}>{b}</option>
                   ))}
                 </select>
