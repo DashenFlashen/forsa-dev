@@ -40,6 +40,48 @@ state file names (`anders-ticket-42.json`). This lets two users independently
 create an environment called `ticket-42` without colliding on state or containers,
 though the underlying git branch will still collide (intentional — see git.py).
 
+## Cross-user process management
+
+The dashboard runs as anders's systemd user service but manages environments
+for all `forsa-devs` group members. Cross-user operations use sudo:
+
+- **tmux** commands accept `run_as` to prefix with `sudo -u <owner>`
+- **ttyd** runs as the dashboard user but attaches to cross-user tmux via sudo
+- **docker** works cross-user via the shared `docker` group
+- **git/files** work via `forsa-devs` group ownership with setgid
+
+Sudoers rule (`/etc/sudoers.d/forsa-devs`):
+```
+%forsa-devs ALL=(%forsa-devs) NOPASSWD: /usr/bin/tmux, /usr/bin/kill, /usr/bin/bash
+```
+
+## Dashboard service
+
+The dashboard runs as a systemd user service (`forsa-dashboard.service`).
+
+```bash
+systemctl --user status forsa-dashboard   # check status
+systemctl --user restart forsa-dashboard  # restart after code changes
+journalctl --user -u forsa-dashboard -n 50 --no-pager  # view logs
+```
+
+The service unit lives at `~/.config/systemd/user/forsa-dashboard.service`
+and auto-restarts on failure. It runs on port 8080 by default.
+
+## Deploying changes
+
+After editing Python code:
+```bash
+uv run pytest && uv run ruff check src/ tests/
+uv tool install --force --reinstall .   # --reinstall is critical, --force alone can use cached builds
+systemctl --user restart forsa-dashboard
+```
+
+For frontend changes, also build first:
+```bash
+cd dashboard && npm run build && cd ..
+```
+
 ## Compose file location
 
 `generate_compose()` writes `docker-compose.dev.yml` into the root of each git
