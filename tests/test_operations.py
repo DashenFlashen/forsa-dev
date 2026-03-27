@@ -9,8 +9,8 @@ import pytest
 
 from forsa_dev.config import Config
 from forsa_dev.operations import (
+    compose_env,
     down_env,
-    repo_compose_env,
     restart_env,
     serve_env,
     stop_env,
@@ -332,14 +332,12 @@ def test_up_env_from_existing_branch_does_not_delete_branch_on_ttyd_failure(up_c
     mock_delete.assert_not_called()
 
 
-def test_repo_compose_env_builds_correct_dict(cfg_and_env):
+def test_compose_env_builds_correct_dict(cfg_and_env):
     cfg, env = cfg_and_env
-    from dataclasses import replace
-    repo_env = replace(env, name="main", type="repo")
-    result = repo_compose_env(cfg, repo_env)
-    assert result["FORSA_DEV_PORT"] == str(repo_env.port)
+    result = compose_env(cfg, env)
+    assert result["FORSA_DEV_PORT"] == str(env.port)
     assert result["FORSA_DEV_DATA"] == str(cfg.data_dir)
-    assert result["FORSA_DEV_CONTAINER"] == f"forsa-{repo_env.user}-main"
+    assert result["FORSA_DEV_CONTAINER"] == f"forsa-{env.user}-{env.name}"
     assert result["FORSA_DEV_IMAGE"] == cfg.docker_image
     assert result["FORSA_DEV_GUROBI_LIC"] == str(cfg.gurobi_lic)
     assert "PATH" in result
