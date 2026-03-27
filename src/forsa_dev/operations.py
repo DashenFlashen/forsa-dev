@@ -95,15 +95,12 @@ def up_env(
     )
     try:
         with allocate_ports(cfg.state_dir, *ranges) as (port, ttyd_port):
-            compose_file = generate_compose(
-                worktree=worktree,
-                user=user,
-                name=name,
-                port=port,
-                data_dir=data_dir or cfg.data_dir,
-                docker_image=cfg.docker_image,
-                gurobi_lic=cfg.gurobi_lic,
-            )
+            compose_file = worktree / "docker-compose.dev.yml"
+            if not compose_file.exists():
+                raise FileNotFoundError(
+                    f"docker-compose.dev.yml not found in {worktree}. "
+                    "The FORSA repo must have this file checked in."
+                )
             env = Environment(
                 name=name,
                 user=user,

@@ -16,6 +16,7 @@ def git_repo(tmp_path):
         ["git", "config", "user.name", "Test"], check=True, capture_output=True, cwd=repo
     )
     (repo / "README.md").write_text("test")
+    (repo / "docker-compose.dev.yml").write_text("services: {}")
     subprocess.run(["git", "add", "."], check=True, capture_output=True, cwd=repo)
     subprocess.run(["git", "commit", "-m", "init"], check=True, capture_output=True, cwd=repo)
     return repo

@@ -130,15 +130,43 @@ def test_up_env_creates_environment(up_cfg):
     assert saved.ttyd_pid == 12345
 
 
-def test_up_env_custom_data_dir(up_cfg, tmp_path):
+def test_up_env_uses_existing_compose_file(up_cfg):
     cfg = up_cfg
-    custom_data = tmp_path / "custom-data"
     with patch("forsa_dev.operations.tmux.create_session"), \
          patch("forsa_dev.operations.ttyd.start_ttyd", return_value=1):
-        up_env(cfg, USER, "new-feature", data_dir=custom_data)
-    worktree = cfg.worktree_dir / "new-feature"
-    compose = (worktree / "docker-compose.dev.yml").read_text()
-    assert str(custom_data) in compose
+        env = up_env(cfg, USER, "new-feature")
+    # Compose file should be the one from git, not overwritten
+    content = env.compose_file.read_text()
+    assert content == "services: {}"
+
+
+def test_up_env_raises_when_compose_file_missing(tmp_path):
+    """up_env fails if docker-compose.dev.yml is not in the worktree."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@test.com"], check=True, capture_output=True, cwd=repo
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test"], check=True, capture_output=True, cwd=repo
+    )
+    (repo / "README.md").write_text("test")
+    # Deliberately no docker-compose.dev.yml
+    subprocess.run(["git", "add", "."], check=True, capture_output=True, cwd=repo)
+    subprocess.run(["git", "commit", "-m", "init"], check=True, capture_output=True, cwd=repo)
+
+    state_dir = tmp_path / "state"
+    cfg = Config(
+        repo=repo, worktree_dir=tmp_path / "worktrees",
+        data_dir=Path("/data/dev"), state_dir=state_dir,
+        base_url="optbox.example.ts.net", docker_image="forsa:latest",
+        gurobi_lic=Path("/opt/gurobi/gurobi.lic"),
+        port_range_start=3000, port_range_end=3099,
+        ttyd_port_range_start=7600, ttyd_port_range_end=7699,
+    )
+    with pytest.raises(FileNotFoundError, match="docker-compose.dev.yml not found"):
+        up_env(cfg, USER, "new-feature")
 
 
 def test_up_env_with_claude_passes_command_to_tmux(up_cfg):
