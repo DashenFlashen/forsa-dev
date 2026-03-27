@@ -30,7 +30,7 @@ def compose_cmd(env: Environment, *args: str) -> list[str]:
 
 def serve_env(cfg: Config, user: str, name: str) -> None:
     env = load_state(user, name, cfg.state_dir)
-    run_env = compose_env(cfg, env) if env.type == "repo" else None
+    run_env = compose_env(cfg, env)
     result = subprocess.run(compose_cmd(env, "up", "-d"), check=False, env=run_env)
     if result.returncode != 0:
         raise RuntimeError("docker compose up failed")
@@ -41,7 +41,7 @@ def serve_env(cfg: Config, user: str, name: str) -> None:
 
 def stop_env(cfg: Config, user: str, name: str) -> None:
     env = load_state(user, name, cfg.state_dir)
-    run_env = compose_env(cfg, env) if env.type == "repo" else None
+    run_env = compose_env(cfg, env)
     subprocess.run(compose_cmd(env, "down"), check=False, env=run_env)
     updated = replace(env, url=None, served_at=None)
     save_state(updated, cfg.state_dir)
@@ -49,7 +49,7 @@ def stop_env(cfg: Config, user: str, name: str) -> None:
 
 def restart_env(cfg: Config, user: str, name: str) -> None:
     env = load_state(user, name, cfg.state_dir)
-    run_env = compose_env(cfg, env) if env.type == "repo" else None
+    run_env = compose_env(cfg, env)
     subprocess.run(compose_cmd(env, "restart"), check=False, env=run_env)
 
 
@@ -223,7 +223,8 @@ def down_env(cfg: Config, user: str, name: str, force: bool = False) -> None:
             f"Branch '{env.branch}' has not been pushed or merged. Use force=True to delete anyway."
         )
 
-    subprocess.run(compose_cmd(env, "down"), check=False)
+    run_env = compose_env(cfg, env)
+    subprocess.run(compose_cmd(env, "down"), check=False, env=run_env)
 
     try:
         tmux.kill_session(env.tmux_session, run_as=user)

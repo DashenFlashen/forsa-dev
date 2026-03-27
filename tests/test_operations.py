@@ -398,3 +398,27 @@ def test_restart_env_passes_env_vars_for_repo_type(tmp_path):
     call_kwargs = mock_run.call_args
     assert call_kwargs.kwargs.get("env") is not None
     assert call_kwargs.kwargs["env"]["FORSA_DEV_PORT"] == "3002"
+
+
+def test_serve_env_passes_env_vars_for_worktree_type(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        serve_env(cfg, USER, "ticket-42")
+    call_kwargs = mock_run.call_args
+    assert call_kwargs.kwargs.get("env") is not None
+    assert call_kwargs.kwargs["env"]["FORSA_DEV_PORT"] == "3002"
+
+
+def test_down_env_passes_env_vars(cfg_and_env):
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.operations.git.branch_is_pushed", return_value=True), \
+         patch("subprocess.run") as mock_run, \
+         patch("forsa_dev.operations.tmux.kill_session"), \
+         patch("forsa_dev.operations.git.remove_worktree"), \
+         patch("forsa_dev.operations.git.delete_branch"):
+        mock_run.return_value = MagicMock(returncode=0)
+        down_env(cfg, USER, "ticket-42")
+    call_kwargs = mock_run.call_args
+    assert call_kwargs.kwargs.get("env") is not None
+    assert call_kwargs.kwargs["env"]["FORSA_DEV_PORT"] == "3002"

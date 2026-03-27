@@ -311,7 +311,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
             raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
 
         cmd = compose_cmd(env, "logs", "-f", "--tail=100")
-        run_env = compose_env(cfg, env) if env.type == "repo" else None
+        run_env = compose_env(cfg, env)
 
         async def generate():
             proc = await asyncio.create_subprocess_exec(

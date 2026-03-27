@@ -14,6 +14,7 @@ from forsa_dev.config import DEFAULT_CONFIG_PATH, Config, load_config, save_conf
 from forsa_dev.list_status import check_status, format_uptime, port_is_open
 from forsa_dev.operations import (
     compose_cmd,
+    compose_env,
     down_env,
     restart_env,
     run_local,
@@ -183,7 +184,8 @@ def logs(
     cfg = _load(config)
     user = getpass.getuser()
     env = load_state(user, name, cfg.state_dir)
-    subprocess.run(compose_cmd(env, "logs", "-f"))
+    run_env = compose_env(cfg, env)
+    subprocess.run(compose_cmd(env, "logs", "-f"), env=run_env)
 
 
 @app.command()
