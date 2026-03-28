@@ -76,28 +76,49 @@ def current_branch(repo: Path) -> str | None:
     return result.stdout.strip()
 
 
-def list_branches(repo: Path) -> list[str]:
-    """List branches available to import (excludes main and worktree-checked-out branches)."""
+def list_branches(repo: Path) -> list[dict]:
+    """List all branches with metadata (name, last_commit, in_worktree)."""
     _git(["fetch", "--all", "--quiet"], repo)  # ignore failure — no remote in tests
 
-    local = _git(["branch", "--format=%(refname:short)"], repo)
-    local_branches = {b.strip() for b in local.stdout.splitlines() if b.strip()}
+    # Get branch names and commit dates in one pass.
+    # Unix timestamp for reliable comparison, ISO for display.
+    ref_result = _git(
+        ["for-each-ref", "--format=%(refname:short) %(committerdate:unix) %(committerdate:iso)", "refs/heads/", "refs/remotes/origin/"],
+        repo,
+    )
 
-    remote = _git(["branch", "-r", "--format=%(refname:short)"], repo)
-    remote_branches = set()
-    for b in remote.stdout.splitlines():
-        b = b.strip()
-        if not b or "HEAD" in b:
+    branches: dict[str, tuple[int, str]] = {}  # name -> (unix_ts, iso_date)
+    for line in ref_result.stdout.splitlines():
+        line = line.strip()
+        if not line:
             continue
-        if b.startswith("origin/"):
-            remote_branches.add(b[len("origin/"):])
+        # Format: "branch-name 1711545000 2026-03-27 14:30:00 +0200"
+        parts = line.split(maxsplit=2)  # [name, unix_ts, iso_rest]
+        if len(parts) < 3:
+            continue
+        name = parts[0]
+        unix_ts = int(parts[1])
+        iso_date = parts[2]
 
-    all_branches = local_branches | remote_branches
+        if "HEAD" in name:
+            continue
+        if name.startswith("origin/"):
+            name = name[len("origin/"):]
 
+        if name not in branches or unix_ts > branches[name][0]:
+            branches[name] = (unix_ts, iso_date)
+
+    # Get worktree-checked-out branches
     worktree_result = _git(["worktree", "list", "--porcelain"], repo)
     in_use = set()
     for line in worktree_result.stdout.splitlines():
         if line.startswith("branch "):
             in_use.add(line.split("refs/heads/", 1)[-1])
 
-    return sorted(all_branches - in_use - {"main"})
+    return sorted(
+        [
+            {"name": name, "last_commit": iso_date, "in_worktree": name in in_use}
+            for name, (_ts, iso_date) in branches.items()
+        ],
+        key=lambda b: b["name"],
+    )
