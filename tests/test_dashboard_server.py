@@ -518,14 +518,20 @@ def test_get_branches_returns_list(setup):
     user_configs, _, _ = setup
     with patch(
         "forsa_dev.dashboard.server.git.list_branches",
-        return_value=["feature-a", "feature-b"],
+        return_value=[
+            {"name": "feature-a", "last_commit": "2026-03-27 14:30:00 +0200", "in_worktree": False},
+            {"name": "feature-b", "last_commit": "2026-03-26 10:00:00 +0200", "in_worktree": False},
+        ],
     ):
         app = create_app(user_configs)
         client = TestClient(app)
         client.cookies.set("forsa_user", TEST_USER)
         response = client.get("/api/branches")
     assert response.status_code == 200
-    assert response.json() == {"branches": ["feature-a", "feature-b"]}
+    data = response.json()
+    names = [b["name"] for b in data["branches"]]
+    assert "feature-a" in names
+    assert "feature-b" in names
 
 
 def test_get_branches_500_on_runtime_error(setup):

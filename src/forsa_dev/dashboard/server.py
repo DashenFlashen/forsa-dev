@@ -226,7 +226,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
         return {"data_dir": str(cfg.data_dir)}
 
     @app.get("/api/branches")
-    def get_branches(user: str = Depends(get_user)) -> dict[str, list[str]]:
+    def get_branches(user: str = Depends(get_user)) -> dict[str, list[dict]]:
         cfg = user_configs[user]
         try:
             branches = git.list_branches(cfg.repo)
