@@ -12,22 +12,26 @@ The branch selector has two issues:
 
 ### Backend: `git.py`
 
-Replace `list_branches()` with a function that returns branch metadata instead of plain names.
+Change `list_branches()` in place to return branch metadata instead of plain names. The return type changes from `list[str]` to `list[dict]` (with keys `name`, `last_commit`, `in_worktree`).
 
-Use `git for-each-ref --format='%(refname:short) %(committerdate:iso)' refs/heads/ refs/remotes/origin/` to get branch names and last commit dates in a single command (after the existing `git fetch --all`).
+Two steps to gather data:
 
-Return a list of objects with:
+1. **Branch names and dates:** Use `git for-each-ref --format='%(refname:short) %(committerdate:iso)' refs/heads/ refs/remotes/origin/` to get branch names and last commit dates in a single command (after the existing `git fetch --all`).
+
+2. **Worktree status:** Use `git worktree list --porcelain` (same as current code) to determine which branches are checked out as worktrees.
+
+Merge these into a list of objects with:
 - `name` (str): branch name, with `origin/` prefix stripped for remote branches
 - `last_commit` (str): ISO datetime of the tip commit
 - `in_worktree` (bool): whether the branch is currently checked out as a worktree
 
-When a branch exists both locally and on the remote, deduplicate by name, keeping the more recent `last_commit` date.
+When a branch exists both locally and on the remote, deduplicate by name, keeping the more recent `last_commit` date. For `in_worktree`, use the local branch's worktree status (only local branches can be in worktrees).
 
-`main` and worktree-checked-out branches are included and tagged, not excluded.
+All branches are included and tagged — `main` and worktree-checked-out branches are no longer excluded. Filtering responsibility moves entirely to the frontend.
 
 ### Backend: API endpoint
 
-`/api/branches` returns the richer structure:
+Update the `/api/branches` endpoint return type annotation from `dict[str, list[str]]` to match the new structure. The endpoint returns:
 
 ```json
 {
@@ -52,7 +56,8 @@ When a branch exists both locally and on the remote, deduplicate by name, keepin
 **"New" tab base branch selector:**
 - Include all branches (including `main` and worktree-checked-out ones)
 - Apply 90-day date filter by default
-- `main` is always shown regardless of age (it's the default base)
+- `main` is always shown regardless of age (hard-coded exception — it's the default base)
+- Branches like `next` that are checked out as worktrees are now selectable as base branches
 
 **Sort order:** Alphabetical, same as today.
 
