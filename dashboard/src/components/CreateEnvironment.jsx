@@ -3,9 +3,31 @@ import { Plus, Download, RefreshCw } from 'lucide-react'
 import CollapsibleSection from './CollapsibleSection'
 
 const NAME_RE = /^[a-z0-9][a-z0-9_-]*$/
+const STALE_DAYS = 90
 
 function deriveName(branch) {
   return branch.split('/').pop().toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/^-+/, '')
+}
+
+function filterBranches(branchList, { excludeWorktree = false, alwaysInclude = [], showAll = false }) {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - STALE_DAYS)
+  return branchList.filter((b) => {
+    if (excludeWorktree && b.in_worktree) return false
+    if (alwaysInclude.includes(b.name)) return true
+    if (!showAll && new Date(b.last_commit) < cutoff) return false
+    return true
+  })
+}
+
+function hasHiddenBranches(branchList, { excludeWorktree = false, excludeName = null }) {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - STALE_DAYS)
+  return branchList.some((b) => {
+    if (excludeWorktree && b.in_worktree) return false
+    if (excludeName && b.name === excludeName) return false
+    return new Date(b.last_commit) < cutoff
+  })
 }
 
 export default function CreateEnvironment({ onCreate, defaultDataDir }) {
@@ -22,8 +44,6 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
   const [loadingBranches, setLoadingBranches] = useState(true)
   const [showAllBase, setShowAllBase] = useState(false)
   const [showAllImport, setShowAllImport] = useState(false)
-
-  const STALE_DAYS = 90
 
   useEffect(() => {
     fetch('/api/branches')
@@ -71,17 +91,6 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
   }
 
   const branchNameValid = NAME_RE.test(branchName)
-
-  function filterBranches(branchList, { excludeWorktree = false, alwaysInclude = [], showAll = false }) {
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - STALE_DAYS)
-    return branchList.filter((b) => {
-      if (excludeWorktree && b.in_worktree) return false
-      if (alwaysInclude.includes(b.name)) return true
-      if (!showAll && new Date(b.last_commit) < cutoff) return false
-      return true
-    })
-  }
 
   return (
     <CollapsibleSection title="Create Environment">
@@ -137,12 +146,12 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
                   className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
                 >
                   <option value="main">main</option>
-                  {filterBranches(branches, { alwaysInclude: [], showAll: showAllBase }).filter((b) => b.name !== 'main').map((b) => (
+                  {filterBranches(branches, { showAll: showAllBase }).filter((b) => b.name !== 'main').map((b) => (
                     <option key={b.name} value={b.name}>{b.name}</option>
                   ))}
                 </select>
               </div>
-              {!showAllBase && branches.some((b) => b.name !== 'main' && new Date(b.last_commit) < new Date(new Date().setDate(new Date().getDate() - STALE_DAYS))) && (
+              {!showAllBase && hasHiddenBranches(branches, { excludeName: 'main' }) && (
                 <button
                   type="button"
                   onClick={() => setShowAllBase(true)}
@@ -189,7 +198,7 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
                 <option key={b.name} value={b.name}>{b.name}</option>
               ))}
             </select>
-            {!showAllImport && branches.some((b) => !b.in_worktree && new Date(b.last_commit) < new Date(new Date().setDate(new Date().getDate() - STALE_DAYS))) && (
+            {!showAllImport && hasHiddenBranches(branches, { excludeWorktree: true }) && (
               <button
                 type="button"
                 onClick={() => setShowAllImport(true)}
