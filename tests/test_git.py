@@ -78,18 +78,24 @@ def test_delete_branch_force(git_repo, tmp_path):
     assert result.stdout.strip() == ""
 
 
-def test_list_branches_returns_available_branches(git_repo, tmp_path):
+def test_list_branches_returns_branch_metadata(git_repo, tmp_path):
     subprocess.run(["git", "branch", "old-work"], check=True, capture_output=True, cwd=git_repo)
     subprocess.run(
         ["git", "branch", "feature/cool-thing"], check=True, capture_output=True, cwd=git_repo
     )
     branches = list_branches(git_repo)
-    assert "old-work" in branches
-    assert "feature/cool-thing" in branches
-    assert "main" not in branches
+    names = [b["name"] for b in branches]
+    assert "old-work" in names
+    assert "feature/cool-thing" in names
+    assert "main" in names  # main is no longer excluded
+    for b in branches:
+        assert "name" in b
+        assert "last_commit" in b
+        assert "in_worktree" in b
+        assert isinstance(b["in_worktree"], bool)
 
 
-def test_list_branches_excludes_worktree_branches(git_repo, tmp_path):
+def test_list_branches_tags_worktree_branches(git_repo, tmp_path):
     subprocess.run(["git", "branch", "in-use"], check=True, capture_output=True, cwd=git_repo)
     subprocess.run(["git", "branch", "available"], check=True, capture_output=True, cwd=git_repo)
     wt = tmp_path / "wt"
@@ -97,8 +103,39 @@ def test_list_branches_excludes_worktree_branches(git_repo, tmp_path):
         ["git", "worktree", "add", str(wt), "in-use"], check=True, capture_output=True, cwd=git_repo
     )
     branches = list_branches(git_repo)
-    assert "in-use" not in branches
-    assert "available" in branches
+    by_name = {b["name"]: b for b in branches}
+    assert by_name["in-use"]["in_worktree"] is True
+    assert by_name["available"]["in_worktree"] is False
+
+
+def test_list_branches_deduplicates_local_and_remote(git_repo, tmp_path):
+    """When a branch exists locally and on a remote, keep the more recent date."""
+    # Create a "remote" repo with a branch
+    remote = tmp_path / "remote"
+    remote.mkdir()
+    subprocess.run(["git", "init", "-b", "main", str(remote)], check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "t@t.com"], check=True, capture_output=True, cwd=remote)
+    subprocess.run(["git", "config", "user.name", "T"], check=True, capture_output=True, cwd=remote)
+    (remote / "f.txt").write_text("v1")
+    subprocess.run(["git", "add", "."], check=True, capture_output=True, cwd=remote)
+    subprocess.run(["git", "commit", "-m", "init"], check=True, capture_output=True, cwd=remote)
+    subprocess.run(["git", "checkout", "-b", "shared"], check=True, capture_output=True, cwd=remote)
+    (remote / "f.txt").write_text("v2")
+    subprocess.run(["git", "add", "."], check=True, capture_output=True, cwd=remote)
+    subprocess.run(["git", "commit", "-m", "remote-update"], check=True, capture_output=True, cwd=remote)
+
+    # Add as remote and fetch
+    subprocess.run(
+        ["git", "remote", "add", "origin", str(remote)], check=True, capture_output=True, cwd=git_repo
+    )
+    subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True, cwd=git_repo)
+
+    # Create a local branch "shared" from an older point (main)
+    subprocess.run(["git", "branch", "shared"], check=True, capture_output=True, cwd=git_repo)
+
+    branches = list_branches(git_repo)
+    names = [b["name"] for b in branches]
+    assert names.count("shared") == 1  # deduplicated, not listed twice
 
 
 def test_create_worktree_from_branch(git_repo, tmp_path):
