@@ -20,6 +20,10 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
   const [branch, setBranch] = useState('')
   const [branchName, setBranchName] = useState('')
   const [loadingBranches, setLoadingBranches] = useState(true)
+  const [showAllBase, setShowAllBase] = useState(false)
+  const [showAllImport, setShowAllImport] = useState(false)
+
+  const STALE_DAYS = 90
 
   useEffect(() => {
     fetch('/api/branches')
@@ -67,6 +71,17 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
   }
 
   const branchNameValid = NAME_RE.test(branchName)
+
+  function filterBranches(branchList, { excludeWorktree = false, alwaysInclude = [], showAll = false }) {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - STALE_DAYS)
+    return branchList.filter((b) => {
+      if (excludeWorktree && b.in_worktree) return false
+      if (alwaysInclude.includes(b.name)) return true
+      if (!showAll && new Date(b.last_commit) < cutoff) return false
+      return true
+    })
+  }
 
   return (
     <CollapsibleSection title="Create Environment">
@@ -122,11 +137,20 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
                   className="flex-1 rounded-md border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
                 >
                   <option value="main">main</option>
-                  {branches.filter((b) => b !== 'main').map((b) => (
-                    <option key={b} value={b}>{b}</option>
+                  {filterBranches(branches, { alwaysInclude: [], showAll: showAllBase }).filter((b) => b.name !== 'main').map((b) => (
+                    <option key={b.name} value={b.name}>{b.name}</option>
                   ))}
                 </select>
               </div>
+              {!showAllBase && branches.some((b) => b.name !== 'main' && new Date(b.last_commit) < new Date(new Date().setDate(new Date().getDate() - STALE_DAYS))) && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllBase(true)}
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors ml-18"
+                >
+                  Show all branches
+                </button>
+              )}
               <div className="flex items-center gap-2">
                 <label className="text-xs text-gray-500 whitespace-nowrap w-16">Data dir</label>
                 <input
@@ -161,10 +185,19 @@ export default function CreateEnvironment({ onCreate, defaultDataDir }) {
               className="flex-1 min-w-48 rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 disabled:opacity-50"
             >
               <option value="">{loadingBranches ? 'Loading…' : 'Select branch…'}</option>
-              {branches.map((b) => (
-                <option key={b} value={b}>{b}</option>
+              {filterBranches(branches, { excludeWorktree: true, showAll: showAllImport }).map((b) => (
+                <option key={b.name} value={b.name}>{b.name}</option>
               ))}
             </select>
+            {!showAllImport && branches.some((b) => !b.in_worktree && new Date(b.last_commit) < new Date(new Date().setDate(new Date().getDate() - STALE_DAYS))) && (
+              <button
+                type="button"
+                onClick={() => setShowAllImport(true)}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                Show all branches
+              </button>
+            )}
             <input
               type="text"
               value={branchName}
