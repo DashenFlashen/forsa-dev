@@ -114,28 +114,44 @@ def test_list_branches_deduplicates_local_and_remote(git_repo, tmp_path):
     remote = tmp_path / "remote"
     remote.mkdir()
     subprocess.run(["git", "init", "-b", "main", str(remote)], check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "t@t.com"], check=True, capture_output=True, cwd=remote)
-    subprocess.run(["git", "config", "user.name", "T"], check=True, capture_output=True, cwd=remote)
+    subprocess.run(
+        ["git", "config", "user.email", "t@t.com"], check=True, capture_output=True, cwd=remote
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "T"], check=True, capture_output=True, cwd=remote
+    )
     (remote / "f.txt").write_text("v1")
     subprocess.run(["git", "add", "."], check=True, capture_output=True, cwd=remote)
     subprocess.run(["git", "commit", "-m", "init"], check=True, capture_output=True, cwd=remote)
     subprocess.run(["git", "checkout", "-b", "shared"], check=True, capture_output=True, cwd=remote)
     (remote / "f.txt").write_text("v2")
     subprocess.run(["git", "add", "."], check=True, capture_output=True, cwd=remote)
-    subprocess.run(["git", "commit", "-m", "remote-update"], check=True, capture_output=True, cwd=remote)
+    subprocess.run(
+        ["git", "commit", "-m", "remote-update"], check=True, capture_output=True, cwd=remote
+    )
 
     # Add as remote and fetch
     subprocess.run(
-        ["git", "remote", "add", "origin", str(remote)], check=True, capture_output=True, cwd=git_repo
+        ["git", "remote", "add", "origin", str(remote)],
+        check=True, capture_output=True, cwd=git_repo,
     )
     subprocess.run(["git", "fetch", "origin"], check=True, capture_output=True, cwd=git_repo)
 
     # Create a local branch "shared" from an older point (main)
     subprocess.run(["git", "branch", "shared"], check=True, capture_output=True, cwd=git_repo)
 
+    # Get the remote's commit date for comparison
+    remote_date_result = subprocess.run(
+        ["git", "log", "-1", "--format=%ci", "origin/shared"],
+        capture_output=True, text=True, cwd=git_repo,
+    )
+    remote_commit_date = remote_date_result.stdout.strip()
+
     branches = list_branches(git_repo)
     names = [b["name"] for b in branches]
     assert names.count("shared") == 1  # deduplicated, not listed twice
+    shared = next(b for b in branches if b["name"] == "shared")
+    assert shared["last_commit"] == remote_commit_date  # kept the newer remote date
 
 
 def test_create_worktree_from_branch(git_repo, tmp_path):

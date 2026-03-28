@@ -82,8 +82,9 @@ def list_branches(repo: Path) -> list[dict]:
 
     # Get branch names and commit dates in one pass.
     # Unix timestamp for reliable comparison, ISO for display.
+    ref_format = "%(refname:short) %(committerdate:unix) %(committerdate:iso)"
     ref_result = _git(
-        ["for-each-ref", "--format=%(refname:short) %(committerdate:unix) %(committerdate:iso)", "refs/heads/", "refs/remotes/origin/"],
+        ["for-each-ref", "--format=" + ref_format, "refs/heads/", "refs/remotes/origin/"],
         repo,
     )
 
