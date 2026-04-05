@@ -83,10 +83,10 @@ def up_env(
         pass
 
     if existing_branch:
-        git.create_worktree_from_branch(cfg.repo, existing_branch, worktree)
+        git.create_worktree_from_branch(cfg.repo, existing_branch, worktree, run_as=user)
         branch = existing_branch
     else:
-        git.create_branch_and_worktree(cfg.repo, name, worktree, from_branch)
+        git.create_branch_and_worktree(cfg.repo, name, worktree, from_branch, run_as=user)
         branch = name
 
     ranges = (
@@ -116,9 +116,9 @@ def up_env(
             )
             save_state(env, cfg.state_dir)
     except Exception:
-        git.remove_worktree(cfg.repo, worktree)
+        git.remove_worktree(cfg.repo, worktree, run_as=user)
         if not existing_branch:
-            git.delete_branch(cfg.repo, name, force=True)
+            git.delete_branch(cfg.repo, name, force=True, run_as=user)
         raise
 
     shell = os.environ.get("SHELL", "/bin/bash")
@@ -130,9 +130,9 @@ def up_env(
         tmux.create_session(full_name, worktree, command=command, run_as=user)
     except RuntimeError:
         delete_state(user, name, cfg.state_dir)
-        git.remove_worktree(cfg.repo, worktree)
+        git.remove_worktree(cfg.repo, worktree, run_as=user)
         if not existing_branch:
-            git.delete_branch(cfg.repo, name, force=True)
+            git.delete_branch(cfg.repo, name, force=True, run_as=user)
         raise
 
     try:
@@ -143,9 +143,9 @@ def up_env(
         except RuntimeError:
             pass
         delete_state(user, name, cfg.state_dir)
-        git.remove_worktree(cfg.repo, worktree)
+        git.remove_worktree(cfg.repo, worktree, run_as=user)
         if not existing_branch:
-            git.delete_branch(cfg.repo, name, force=True)
+            git.delete_branch(cfg.repo, name, force=True, run_as=user)
         raise
     updated = replace(env, ttyd_pid=pid)
     save_state(updated, cfg.state_dir)
@@ -232,12 +232,12 @@ def down_env(cfg: Config, user: str, name: str, force: bool = False) -> None:
         ttyd.stop_ttyd(env.ttyd_pid)
 
     try:
-        git.remove_worktree(cfg.repo, env.worktree)
+        git.remove_worktree(cfg.repo, env.worktree, run_as=user)
     except RuntimeError as e:
         logger.warning("Could not remove worktree: %s", e)
 
     try:
-        git.delete_branch(cfg.repo, env.branch, force=force)
+        git.delete_branch(cfg.repo, env.branch, force=force, run_as=user)
     except RuntimeError as e:
         logger.warning("Could not delete branch: %s", e)
 

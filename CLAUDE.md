@@ -48,11 +48,11 @@ for all `forsa-devs` group members. Cross-user operations use sudo:
 - **tmux** commands accept `run_as` to prefix with `sudo -u <owner>`
 - **ttyd** runs as the dashboard user but attaches to cross-user tmux via sudo
 - **docker** works cross-user via the shared `docker` group
-- **git/files** work via `forsa-devs` group ownership with setgid
+- **git** commands accept `run_as` so worktrees are owned by the target user
 
 Sudoers rule (`/etc/sudoers.d/forsa-devs`):
 ```
-%forsa-devs ALL=(%forsa-devs) NOPASSWD: /usr/bin/tmux, /usr/bin/kill, /usr/bin/bash
+%forsa-devs ALL=(%forsa-devs) NOPASSWD: /usr/bin/tmux, /usr/bin/kill, /usr/bin/bash, /usr/bin/git
 ```
 
 ## Dashboard service

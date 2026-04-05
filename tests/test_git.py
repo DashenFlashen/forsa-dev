@@ -1,4 +1,6 @@
+import getpass
 import subprocess
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -197,3 +199,82 @@ def test_current_branch_returns_head_when_detached(git_repo):
 
 def test_current_branch_returns_none_for_invalid_repo(tmp_path):
     assert current_branch(tmp_path) is None
+
+
+# --- run_as (sudo) tests ---
+
+
+def test_create_branch_and_worktree_uses_sudo_for_different_user(tmp_path):
+    """git commands are prefixed with sudo -u when run_as differs from current user."""
+    worktree_path = tmp_path / "worktrees" / "feature-x"
+    with patch("forsa_dev.git.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout="", returncode=0)
+        create_branch_and_worktree(
+            repo=tmp_path / "repo",
+            branch="feature-x",
+            worktree=worktree_path,
+            run_as="otheruser",
+        )
+    assert mock_run.call_count == 2
+    for call in mock_run.call_args_list:
+        cmd = call[0][0]
+        assert cmd[:3] == ["sudo", "-u", "otheruser"]
+        assert "git" in cmd
+
+
+def test_create_branch_and_worktree_no_sudo_for_same_user(tmp_path):
+    """No sudo prefix when run_as matches current user."""
+    me = getpass.getuser()
+    worktree_path = tmp_path / "worktrees" / "feature-x"
+    with patch("forsa_dev.git.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout="", returncode=0)
+        create_branch_and_worktree(
+            repo=tmp_path / "repo",
+            branch="feature-x",
+            worktree=worktree_path,
+            run_as=me,
+        )
+    for call in mock_run.call_args_list:
+        cmd = call[0][0]
+        assert cmd[0] == "git"
+
+
+def test_create_branch_and_worktree_no_sudo_for_none(git_repo, tmp_path):
+    """No sudo prefix when run_as is None (default)."""
+    worktree_path = tmp_path / "worktrees" / "feature-nosudo"
+    create_branch_and_worktree(
+        repo=git_repo,
+        branch="feature-nosudo",
+        worktree=worktree_path,
+    )
+    assert worktree_path.exists()
+
+
+def test_remove_worktree_uses_sudo_for_different_user(tmp_path):
+    with patch("forsa_dev.git.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        remove_worktree(repo=tmp_path, worktree=tmp_path / "wt", run_as="otheruser")
+    cmd = mock_run.call_args[0][0]
+    assert cmd[:3] == ["sudo", "-u", "otheruser"]
+
+
+def test_delete_branch_uses_sudo_for_different_user(tmp_path):
+    with patch("forsa_dev.git.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        delete_branch(repo=tmp_path, branch="feature-x", run_as="otheruser")
+    cmd = mock_run.call_args[0][0]
+    assert cmd[:3] == ["sudo", "-u", "otheruser"]
+
+
+def test_create_worktree_from_branch_uses_sudo_for_different_user(tmp_path):
+    worktree_path = tmp_path / "worktrees" / "existing"
+    with patch("forsa_dev.git.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        create_worktree_from_branch(
+            repo=tmp_path / "repo",
+            branch="existing",
+            worktree=worktree_path,
+            run_as="otheruser",
+        )
+    cmd = mock_run.call_args[0][0]
+    assert cmd[:3] == ["sudo", "-u", "otheruser"]

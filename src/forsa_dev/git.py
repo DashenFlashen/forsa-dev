@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import getpass
 import subprocess
 from pathlib import Path
 
 
-def _git(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
+def _sudo_prefix(run_as: str | None) -> list[str]:
+    """Return a sudo prefix if run_as differs from the current user."""
+    if run_as and run_as != getpass.getuser():
+        return ["sudo", "-u", run_as]
+    return []
+
+
+def _git(args: list[str], cwd: Path, run_as: str | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["git"] + args,
+        [*_sudo_prefix(run_as), "git"] + args,
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -18,13 +26,14 @@ def create_branch_and_worktree(
     branch: str,
     worktree: Path,
     from_branch: str = "main",
+    run_as: str | None = None,
 ) -> None:
     """Create a new git branch and check it out as a worktree."""
     # Check branch doesn't already exist.
     # Note: there's a TOCTOU window between this check and `worktree add -b` below —
     # two concurrent `up` calls for the same branch will both pass, and the second
     # `worktree add` will fail with a raw git error rather than this friendly message.
-    result = _git(["branch", "--list", branch], repo)
+    result = _git(["branch", "--list", branch], repo, run_as=run_as)
     if result.stdout.strip():
         raise RuntimeError(f"Branch '{branch}' already exists — it may belong to another user.")
 
@@ -32,14 +41,15 @@ def create_branch_and_worktree(
     result = _git(
         ["worktree", "add", "-b", branch, str(worktree), from_branch],
         repo,
+        run_as=run_as,
     )
     if result.returncode != 0:
         raise RuntimeError(f"git worktree add failed: {result.stderr}")
 
 
-def remove_worktree(repo: Path, worktree: Path) -> None:
+def remove_worktree(repo: Path, worktree: Path, run_as: str | None = None) -> None:
     """Remove a git worktree and prune the worktree list."""
-    result = _git(["worktree", "remove", "--force", str(worktree)], repo)
+    result = _git(["worktree", "remove", "--force", str(worktree)], repo, run_as=run_as)
     if result.returncode != 0:
         raise RuntimeError(f"git worktree remove failed: {result.stderr}")
 
@@ -52,18 +62,20 @@ def branch_is_pushed(repo: Path, branch: str) -> bool:
     return bool(result.stdout.strip())
 
 
-def delete_branch(repo: Path, branch: str, force: bool = False) -> None:
+def delete_branch(repo: Path, branch: str, force: bool = False, run_as: str | None = None) -> None:
     """Delete a git branch. Use force=True to delete unmerged branches."""
     flag = "-D" if force else "-d"
-    result = _git(["branch", flag, branch], repo)
+    result = _git(["branch", flag, branch], repo, run_as=run_as)
     if result.returncode != 0:
         raise RuntimeError(f"git branch {flag} failed: {result.stderr}")
 
 
-def create_worktree_from_branch(repo: Path, branch: str, worktree: Path) -> None:
+def create_worktree_from_branch(
+    repo: Path, branch: str, worktree: Path, run_as: str | None = None,
+) -> None:
     """Check out an existing branch as a worktree (does not create a new branch)."""
     worktree.parent.mkdir(parents=True, exist_ok=True)
-    result = _git(["worktree", "add", str(worktree), branch], repo)
+    result = _git(["worktree", "add", str(worktree), branch], repo, run_as=run_as)
     if result.returncode != 0:
         raise RuntimeError(f"git worktree add failed: {result.stderr}")
 

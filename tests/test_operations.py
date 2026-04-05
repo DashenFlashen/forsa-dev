@@ -360,6 +360,56 @@ def test_up_env_from_existing_branch_does_not_delete_branch_on_ttyd_failure(up_c
     mock_delete.assert_not_called()
 
 
+def _fake_worktree_creator():
+    """Return a side_effect that creates the worktree dir with a compose file."""
+    def create_worktree(*args, **kwargs):
+        wt = args[2]  # worktree is 3rd positional arg for both create functions
+        wt.mkdir(parents=True, exist_ok=True)
+        (wt / "docker-compose.dev.yml").write_text("services: {}")
+    return create_worktree
+
+
+def test_up_env_passes_run_as_to_git(up_cfg):
+    """up_env passes run_as=user to git functions so worktrees are owned by the target user."""
+    cfg = up_cfg
+    with patch("forsa_dev.operations.git.create_branch_and_worktree",
+               side_effect=_fake_worktree_creator()) as mock_create_wt, \
+         patch("forsa_dev.operations.git.remove_worktree"), \
+         patch("forsa_dev.operations.git.delete_branch"), \
+         patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=1):
+        up_env(cfg, "someuser", "new-feature")
+    mock_create_wt.assert_called_once()
+    assert mock_create_wt.call_args.kwargs.get("run_as") == "someuser"
+
+
+def test_up_env_passes_run_as_to_git_existing_branch(up_cfg, git_repo):
+    """up_env passes run_as when using existing_branch too."""
+    cfg = up_cfg
+    subprocess.run(["git", "branch", "existing"], check=True, capture_output=True, cwd=git_repo)
+    with patch("forsa_dev.operations.git.create_worktree_from_branch",
+               side_effect=_fake_worktree_creator()) as mock_create_wt, \
+         patch("forsa_dev.operations.git.remove_worktree"), \
+         patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=1):
+        up_env(cfg, "someuser", "existing", existing_branch="existing")
+    mock_create_wt.assert_called_once()
+    assert mock_create_wt.call_args.kwargs.get("run_as") == "someuser"
+
+
+def test_down_env_passes_run_as_to_git(cfg_and_env):
+    """down_env passes run_as=user to git remove_worktree and delete_branch."""
+    cfg, _ = cfg_and_env
+    with patch("forsa_dev.operations.git.branch_is_pushed", return_value=True), \
+         patch("subprocess.run", return_value=MagicMock(returncode=0)), \
+         patch("forsa_dev.operations.tmux.kill_session"), \
+         patch("forsa_dev.operations.git.remove_worktree") as mock_remove, \
+         patch("forsa_dev.operations.git.delete_branch") as mock_delete:
+        down_env(cfg, USER, "ticket-42")
+    assert mock_remove.call_args.kwargs.get("run_as") == USER
+    assert mock_delete.call_args.kwargs.get("run_as") == USER
+
+
 def test_compose_env_builds_correct_dict(cfg_and_env):
     cfg, env = cfg_and_env
     result = compose_env(cfg, env)
