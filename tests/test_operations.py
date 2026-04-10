@@ -308,6 +308,56 @@ def test_compose_cmd_format(cfg_and_env):
     assert "-d" in cmd
 
 
+def test_up_env_with_initial_prompt_enables_claude_and_sends_text(up_cfg):
+    cfg = up_cfg
+    with patch("forsa_dev.operations.tmux.create_session") as mock_create, \
+         patch("forsa_dev.operations.tmux.send_text") as mock_send, \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=99), \
+         patch("forsa_dev.operations.time.sleep"):
+        up_env(cfg, USER, "new-feature", initial_prompt="fix the tests")
+    # Claude should be started even though with_claude wasn't explicitly set
+    assert "claude" in mock_create.call_args.kwargs["command"]
+    # Prompt should be sent to the tmux session
+    mock_send.assert_called_once_with(f"{USER}-new-feature", "fix the tests", run_as=USER)
+
+
+def test_up_env_with_initial_prompt_waits_before_sending(up_cfg):
+    cfg = up_cfg
+    call_order = []
+    with patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.tmux.send_text",
+               side_effect=lambda *a, **kw: call_order.append("send_text")), \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=99), \
+         patch("forsa_dev.operations.time.sleep",
+               side_effect=lambda _: call_order.append("sleep")):
+        up_env(cfg, USER, "new-feature", initial_prompt="do something")
+    assert call_order == ["sleep", "send_text"]
+
+
+def test_up_env_without_initial_prompt_does_not_send(up_cfg):
+    cfg = up_cfg
+    with patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.tmux.send_text") as mock_send, \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=99):
+        up_env(cfg, USER, "new-feature", with_claude=True)
+    mock_send.assert_not_called()
+
+
+def test_up_env_initial_prompt_failure_does_not_roll_back(up_cfg):
+    """If sending the prompt fails, the environment should still be created."""
+    cfg = up_cfg
+    with patch("forsa_dev.operations.tmux.create_session"), \
+         patch("forsa_dev.operations.tmux.send_text",
+               side_effect=RuntimeError("send failed")), \
+         patch("forsa_dev.operations.ttyd.start_ttyd", return_value=99), \
+         patch("forsa_dev.operations.time.sleep"):
+        env = up_env(cfg, USER, "new-feature", initial_prompt="do something")
+    # Environment should still exist
+    assert env.name == "new-feature"
+    saved = load_state(USER, "new-feature", cfg.state_dir)
+    assert saved.name == "new-feature"
+
+
 def test_up_env_from_existing_branch(up_cfg, git_repo):
     cfg = up_cfg
     subprocess.run(["git", "branch", "my-feature"], check=True, capture_output=True, cwd=git_repo)

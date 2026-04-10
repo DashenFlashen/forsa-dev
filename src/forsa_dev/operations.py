@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import subprocess
+import time
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -53,6 +54,9 @@ def restart_env(cfg: Config, user: str, name: str) -> None:
     subprocess.run(compose_cmd(env, "restart"), check=False, env=run_env)
 
 
+PROMPT_DELAY_SECONDS = 5
+
+
 def up_env(
     cfg: Config,
     user: str,
@@ -61,6 +65,7 @@ def up_env(
     with_claude: bool = False,
     data_dir: Path | None = None,
     existing_branch: str | None = None,
+    initial_prompt: str | None = None,
 ) -> Environment:
     if not _NAME_RE.match(name):
         raise ValueError(
@@ -121,6 +126,9 @@ def up_env(
             git.delete_branch(cfg.repo, name, force=True, run_as=user)
         raise
 
+    if initial_prompt:
+        with_claude = True
+
     shell = os.environ.get("SHELL", "/bin/bash")
     command = (
         f"{shell} -i -c 'claude --dangerously-skip-permissions --effort max; exec {shell}'"
@@ -149,6 +157,14 @@ def up_env(
         raise
     updated = replace(env, ttyd_pid=pid)
     save_state(updated, cfg.state_dir)
+
+    if initial_prompt:
+        try:
+            time.sleep(PROMPT_DELAY_SECONDS)
+            tmux.send_text(full_name, initial_prompt, run_as=user)
+        except RuntimeError:
+            logger.warning("Failed to send initial prompt to %s", full_name)
+
     return updated
 
 

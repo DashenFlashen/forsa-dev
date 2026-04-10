@@ -83,6 +83,26 @@ def send_keys(session: str, key: str, run_as: str | None = None) -> None:
         raise RuntimeError(f"tmux send-keys failed: {result.stderr}")
 
 
+def send_text(session: str, text: str, run_as: str | None = None) -> None:
+    """Send literal text to a tmux session and press Enter to submit.
+
+    Raises RuntimeError if the session is missing or the command fails.
+    """
+    prefix = _sudo_prefix(run_as)
+    result = subprocess.run(
+        [*prefix, "tmux", "send-keys", "-t", session, "-l", text],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"tmux send-keys failed: {result.stderr}")
+    result = subprocess.run(
+        [*prefix, "tmux", "send-keys", "-t", session, "Enter"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"tmux send-keys Enter failed: {result.stderr}")
+
+
 def attach_session(session: str) -> None:
     """Attach to a tmux session. Replaces the current process.
     Uses switch-client if already inside tmux, attach-session otherwise."""

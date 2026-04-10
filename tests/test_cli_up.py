@@ -84,3 +84,16 @@ def test_up_with_claude_passes_flag(config_file, tmp_path):
         )
     assert result.exit_code == 0, result.output
     assert mock_up.call_args.kwargs["with_claude"] is True
+
+
+def test_up_with_prompt_passes_initial_prompt(config_file, tmp_path):
+    worktree = tmp_path / "worktrees" / "feature-x"
+    env = _make_env("feature-x", worktree, tmp_path / "state")
+    with patch("forsa_dev.cli.up_env", return_value=env) as mock_up, \
+         patch("forsa_dev.tmux.attach_session"):
+        result = runner.invoke(
+            app, ["up", "feature-x", "--prompt", "fix the tests",
+                  "--config", str(config_file)]
+        )
+    assert result.exit_code == 0, result.output
+    assert mock_up.call_args.kwargs["initial_prompt"] == "fix the tests"

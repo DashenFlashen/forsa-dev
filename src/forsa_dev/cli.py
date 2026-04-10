@@ -89,6 +89,7 @@ def up(
     name: str,
     from_branch: Annotated[str, typer.Option("--from", help="Branch to create from.")] = "main",
     with_claude: Annotated[bool, typer.Option("--with-claude/--no-claude", help="Start tmux with Claude Code.")] = True,  # noqa: E501
+    prompt: Annotated[str | None, typer.Option("--prompt", help="Initial prompt to send to Claude after startup.")] = None,  # noqa: E501
     config: ConfigOption = None,
 ):
     """Create a git worktree, compose file, and tmux session."""
@@ -96,7 +97,10 @@ def up(
     user = getpass.getuser()
     full_name = _full_name(user, name)
     try:
-        env = up_env(cfg, user, name, from_branch=from_branch, with_claude=with_claude)
+        env = up_env(
+            cfg, user, name, from_branch=from_branch,
+            with_claude=with_claude, initial_prompt=prompt,
+        )
     except ValueError as e:
         typer.echo(f"Error: {e}", err=True)
         raise typer.Exit(1)
