@@ -182,6 +182,8 @@ def run_local(cfg: Config, work_dir: Path, data_dir: Path | None = None) -> None
             data_dir=data_dir or cfg.data_dir,
             docker_image=cfg.docker_image,
             gurobi_lic=cfg.gurobi_lic,
+            container_uid=os.getuid(),
+            container_gid=os.getgid(),
         )
         # Write temporary state so the port stays reserved after lock release
         env = Environment(
@@ -222,6 +224,8 @@ def compose_env(cfg: Config, env: Environment) -> dict[str, str]:
         "FORSA_DEV_CONTAINER": f"forsa-{env.user}-{env.name}",
         "FORSA_DEV_IMAGE": cfg.docker_image,
         "FORSA_DEV_GUROBI_LIC": str(cfg.gurobi_lic),
+        "FORSA_DEV_UID": str(os.getuid()),
+        "FORSA_DEV_GID": str(os.getgid()),
     }
 
 

@@ -13,6 +13,7 @@ services:
   forsa:
     image: {docker_image}
     container_name: forsa-{user}-{name}
+    user: "{container_uid}:{container_gid}"
     ports:
       - "{port}:8000"
     volumes:
@@ -50,6 +51,8 @@ def generate_compose(
     data_dir: Path,
     docker_image: str,
     gurobi_lic: Path,
+    container_uid: int = 1000,
+    container_gid: int = 1000,
 ) -> Path:
     """Write docker-compose.dev.yml into the worktree. Returns the file path."""
     content = _TEMPLATE.format(
@@ -60,6 +63,8 @@ def generate_compose(
         data_dir=data_dir,
         gurobi_lic=gurobi_lic,
         startup_cmd=_STARTUP_CMD,
+        container_uid=container_uid,
+        container_gid=container_gid,
     )
     compose_file = worktree / "docker-compose.dev.yml"
     compose_file.write_text(content)
