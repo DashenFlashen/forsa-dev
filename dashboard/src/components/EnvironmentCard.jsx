@@ -1,11 +1,11 @@
-import { Code2, Terminal, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, Code2, Terminal, Trash2 } from 'lucide-react'
 import ActionButtons from './ActionButtons'
 import ConfirmModal from './ConfirmModal'
 import StatusBadge from './StatusBadge'
 import UserInitials from './UserInitials'
 import useDeleteConfirmation from '../hooks/useDeleteConfirmation'
 
-export default function EnvironmentCard({ env, onAction, loadingAction, onSelect, isSelected, onDelete, loadingDelete }) {
+export default function EnvironmentCard({ env, onAction, loadingAction, onSelect, isSelected, onDelete, loadingDelete, onArchive }) {
   const { confirmDelete, handleDeleteClick, handleConfirmDelete, cancelDelete } = useDeleteConfirmation(onDelete, env)
 
   const branchDiffers = env.branch !== env.name
@@ -39,7 +39,9 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
           <StatusBadge status={env.status.server} />
           <StatusBadge status={env.status.tmux} />
           <div className="flex-1" />
-          <span className="text-xs text-gray-500 tabular-nums">{env.uptime}</span>
+          {env.uptime && env.uptime !== '-' && (
+            <span className="text-xs text-gray-500 tabular-nums">{env.uptime}</span>
+          )}
           <a
             href={env.url}
             target="_blank"
@@ -77,6 +79,16 @@ export default function EnvironmentCard({ env, onAction, loadingAction, onSelect
           >
             <Code2 className="h-4 w-4" />
           </a>
+          {env.type !== 'repo' && (
+            <button
+              onClick={() => onArchive(env.user, env.name)}
+              title={env.archived ? 'Unarchive environment' : 'Archive environment'}
+              aria-label={`${env.archived ? 'Unarchive' : 'Archive'} ${env.name}`}
+              className="rounded-md p-2.5 text-gray-500 transition-colors hover:bg-gray-800 hover:text-gray-300"
+            >
+              {env.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+            </button>
+          )}
           {env.type !== 'repo' && (
             <button
               onClick={handleDeleteClick}

@@ -1,11 +1,11 @@
-import { Code2, Terminal, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, Code2, Terminal, Trash2 } from 'lucide-react'
 import ActionButtons from './ActionButtons'
 import ConfirmModal from './ConfirmModal'
 import StatusBadge from './StatusBadge'
 import UserInitials from './UserInitials'
 import useDeleteConfirmation from '../hooks/useDeleteConfirmation'
 
-export default function EnvironmentRow({ env, onAction, loadingAction, onSelect, isSelected, onDelete, loadingDelete }) {
+export default function EnvironmentRow({ env, onAction, loadingAction, onSelect, isSelected, onDelete, loadingDelete, onArchive }) {
   const { confirmDelete, handleDeleteClick, handleConfirmDelete, cancelDelete } = useDeleteConfirmation(onDelete, env)
 
   const branchDiffers = env.branch !== env.name
@@ -35,10 +35,10 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
           <UserInitials user={env.user} />
         </td>
         <td className="px-4 py-3">
-          <StatusBadge status={env.status.server} />
-        </td>
-        <td className="px-4 py-3">
-          <StatusBadge status={env.status.tmux} />
+          <div className="flex items-center gap-1.5">
+            <StatusBadge status={env.status.server} />
+            <StatusBadge status={env.status.tmux} />
+          </div>
         </td>
         <td className="px-4 py-3 text-sm">
           <a
@@ -51,7 +51,7 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
             :{env.port}
           </a>
         </td>
-        <td className="px-4 py-3 text-sm text-gray-400 tabular-nums">{env.uptime}</td>
+        <td className="px-4 py-3 text-sm text-gray-400 tabular-nums">{env.uptime !== '-' ? env.uptime : ''}</td>
         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-1.5">
             <ActionButtons env={env} onAction={onAction} loading={loadingAction} />
@@ -60,23 +60,35 @@ export default function EnvironmentRow({ env, onAction, loadingAction, onSelect,
               disabled={!terminalReady}
               title={!ttydAlive ? 'Terminal not available' : !terminalReady ? 'Terminal starting…' : 'Open terminal'}
               aria-label={`Open terminal for ${env.name}`}
-              className={`rounded-md p-2 transition-colors ${
+              className={`inline-flex items-center gap-1 rounded-md p-2 transition-colors ${
                 terminalReady
                   ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
                   : 'text-gray-600 cursor-not-allowed opacity-30'
               }`}
             >
               <Terminal className="h-4 w-4" />
+              <span className="text-xs">Term</span>
             </button>
             <a
               href={`vscode://vscode-remote/ssh-remote+${window.location.hostname}${env.worktree}`}
               title="Open in VSCode"
               aria-label={`Open ${env.name} in VSCode`}
-              className="rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200"
+              className="inline-flex items-center gap-1 rounded-md p-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200"
               onClick={(e) => e.stopPropagation()}
             >
               <Code2 className="h-4 w-4" />
+              <span className="text-xs">VSCode</span>
             </a>
+            {env.type !== 'repo' && (
+              <button
+                onClick={() => onArchive(env.user, env.name)}
+                title={env.archived ? 'Unarchive environment' : 'Archive environment'}
+                aria-label={`${env.archived ? 'Unarchive' : 'Archive'} ${env.name}`}
+                className="rounded-md p-2 text-gray-500 transition-colors hover:bg-gray-800 hover:text-gray-300"
+              >
+                {env.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+              </button>
+            )}
             {env.type !== 'repo' && (
               <button
                 onClick={handleDeleteClick}

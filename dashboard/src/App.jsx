@@ -123,6 +123,15 @@ export default function App() {
     }
   }, [fetchEnvs])
 
+  const handleArchive = useCallback(async (owner, name) => {
+    try {
+      await apiFetch(`/api/environments/${owner}/${name}/archive`, { method: 'POST' })
+      await fetchEnvs()
+    } catch (e) {
+      setError(e.message)
+    }
+  }, [fetchEnvs])
+
   const handleDelete = useCallback(async (owner, name, force = false) => {
     const key = `${owner}/${name}`
     setLoadingDeletes((prev) => ({ ...prev, [key]: true }))
@@ -184,7 +193,7 @@ export default function App() {
         </div>
       </header>
       <ErrorToast message={error} onDismiss={() => setError(null)} />
-      <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6 lg:py-6 space-y-6">
+      <main className="mx-auto max-w-7xl px-4 py-4 lg:px-6 lg:py-6 space-y-4">
         <HealthPanel health={health} />
         <WorkspaceCard
           env={workspaceEnv}
@@ -201,6 +210,7 @@ export default function App() {
           selectedEnv={selectedEnv}
           onDelete={handleDelete}
           loadingDeletes={loadingDeletes}
+          onArchive={handleArchive}
         />
         {/* Fullscreen terminal overlay — same for mobile and desktop */}
         {selectedEnv && (
