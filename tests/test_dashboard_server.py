@@ -878,6 +878,69 @@ def test_get_environments_refreshes_branch_for_repo_type(tmp_path):
 # --- Delete guard for repo environments ---
 
 
+# --- POST /api/environments/{owner}/{name}/archive ---
+
+
+def test_post_archive_toggles_flag(setup):
+    user_configs, _, _ = setup
+    state_dir = list(user_configs.values())[0].state_dir
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+
+    # Initially not archived
+    env = load_state(TEST_USER, "ticket-42", state_dir)
+    assert env.archived is False
+
+    # Toggle on
+    response = client.post(f"/api/environments/{TEST_USER}/ticket-42/archive")
+    assert response.status_code == 200
+    assert response.json() == {"archived": True}
+    env = load_state(TEST_USER, "ticket-42", state_dir)
+    assert env.archived is True
+
+    # Toggle off
+    response = client.post(f"/api/environments/{TEST_USER}/ticket-42/archive")
+    assert response.status_code == 200
+    assert response.json() == {"archived": False}
+    env = load_state(TEST_USER, "ticket-42", state_dir)
+    assert env.archived is False
+
+
+def test_post_archive_404_when_not_found(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    client.cookies.set("forsa_user", TEST_USER)
+    response = client.post(f"/api/environments/{TEST_USER}/nonexistent/archive")
+    assert response.status_code == 404
+
+
+def test_post_archive_requires_auth(setup):
+    user_configs, _, _ = setup
+    app = create_app(user_configs)
+    client = TestClient(app)
+    response = client.post(f"/api/environments/{TEST_USER}/ticket-42/archive")
+    assert response.status_code == 401
+
+
+def test_get_environments_includes_archived_field(setup):
+    user_configs, _, _ = setup
+    with patch("forsa_dev.dashboard.server.tmux") as mock_tmux, \
+         patch("forsa_dev.dashboard.server.port_is_open", return_value=False), \
+         patch("forsa_dev.dashboard.server.ttyd") as mock_ttyd:
+        mock_tmux.session_status.return_value = "active"
+        mock_ttyd.ttyd_is_alive.return_value = False
+        app = create_app(user_configs)
+        client = TestClient(app)
+        response = client.get("/api/environments")
+    data = response.json()
+    assert data[0]["archived"] is False
+
+
+# --- Delete guard for repo environments ---
+
+
 def test_delete_returns_400_for_repo_environment(tmp_path):
     state_dir = tmp_path / "state"
     repo_dir = tmp_path / "repo"

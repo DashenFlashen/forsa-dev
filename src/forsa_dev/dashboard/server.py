@@ -203,6 +203,7 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
                 },
                 "uptime": format_uptime(env.served_at),
                 "type": env.type,
+                "archived": env.archived,
             })
         return result
 
@@ -286,6 +287,18 @@ def create_app(user_configs: dict[str, Config]) -> FastAPI:
         except RuntimeError as e:
             raise HTTPException(status_code=500, detail=str(e))
         return {"status": "ok"}
+
+    @app.post("/api/environments/{owner}/{name}/archive")
+    def post_archive(
+        owner: str, name: str, _user: str = Depends(get_user),
+    ) -> dict[str, bool]:
+        try:
+            env = load_state(owner, name, state_dir)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Environment '{name}' not found")
+        updated = replace(env, archived=not env.archived)
+        save_state(updated, state_dir)
+        return {"archived": updated.archived}
 
     @app.delete("/api/environments/{owner}/{name}")
     def delete_environment(

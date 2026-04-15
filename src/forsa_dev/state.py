@@ -24,6 +24,7 @@ class Environment:
     ttyd_port: int | None = None
     ttyd_pid: int | None = None
     type: str = "worktree"
+    archived: bool = False
 
 
 def _state_path(user: str, name: str, state_dir: Path) -> Path:
@@ -55,6 +56,7 @@ def _deserialize(data: dict) -> Environment:
         ttyd_port=data.get("ttyd_port"),
         ttyd_pid=data.get("ttyd_pid"),
         type=data.get("type", "worktree"),
+        archived=data.get("archived", False),
     )
 
 

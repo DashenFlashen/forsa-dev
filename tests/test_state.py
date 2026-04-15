@@ -144,3 +144,34 @@ def test_state_roundtrip_with_type_field(tmp_path):
     save_state(env, state_dir)
     loaded = load_state("anders", "main", state_dir)
     assert loaded.type == "repo"
+
+
+def test_deserialize_state_without_archived_field(tmp_path):
+    """State files written before archived support must still load as not archived."""
+    state_dir = tmp_path / "state"
+    state_dir.mkdir()
+    old_data = {
+        "name": "ticket-42", "user": "anders", "branch": "ticket-42",
+        "worktree": str(tmp_path / "wt"), "tmux_session": "anders-ticket-42",
+        "compose_file": str(tmp_path / "compose.yml"),
+        "port": 3002, "url": None,
+        "created_at": "2026-03-07T22:00:00+00:00", "served_at": None,
+    }
+    (state_dir / "anders-ticket-42.json").write_text(json.dumps(old_data))
+    env = load_state("anders", "ticket-42", state_dir)
+    assert env.archived is False
+
+
+def test_state_roundtrip_with_archived_field(tmp_path):
+    state_dir = tmp_path / "state"
+    env = Environment(
+        name="ticket-42", user="anders", branch="ticket-42",
+        worktree=tmp_path / "wt", tmux_session="anders-ticket-42",
+        compose_file=tmp_path / "compose.yml",
+        port=3002, url=None,
+        created_at=datetime(2026, 3, 7, 22, 0, 0, tzinfo=timezone.utc),
+        served_at=None, archived=True,
+    )
+    save_state(env, state_dir)
+    loaded = load_state("anders", "ticket-42", state_dir)
+    assert loaded.archived is True
