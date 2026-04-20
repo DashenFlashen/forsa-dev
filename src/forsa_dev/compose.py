@@ -32,6 +32,7 @@ services:
       FORSA_SPOT_PRICE_PATH: /app/data/elspot_prices.xlsx
       PYTHON: /usr/bin/python3
       GRB_LICENSE_FILE: /opt/gurobi/gurobi.lic
+      HOME: /home/appuser
     command: ["bash", "-c", "{startup_cmd}"]
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/ready')"]

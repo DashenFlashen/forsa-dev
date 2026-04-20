@@ -106,6 +106,7 @@ def up_env(
                     f"docker-compose.dev.yml not found in {worktree}. "
                     "The FORSA repo must have this file checked in."
                 )
+            (worktree / "logs").mkdir(exist_ok=True)
             env = Environment(
                 name=name,
                 user=user,
